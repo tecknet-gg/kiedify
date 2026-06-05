@@ -1,8 +1,25 @@
 import requests
+from queue import Queue
+import yt_dlp
+import json
+import os
 
 class Downloader:
     def __init__(self):
         self.baseURL = "https://api.deezer.com"
+        self.musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
+        self.config = {}
+        try:
+            with open("config.json", "r") as f:
+                self.config = json.load(f)
+        except FileNotFoundError:
+            print("Config file missing")
+        except json.decoder.JSONDecodeError:
+            print("Config file invalid")
+
+        self.config = self.config.get("opt",{})
+
+
         print("Initialised")
 
     def getArtist(self, artist):
@@ -31,9 +48,9 @@ class Downloader:
         return item["rank"]
 
     def prettyPrint(self, albums):
-        print("TOP ALBUMS")
+        print("top albums:")
         for i, a in enumerate(albums, 1):
-            print(f"{i:02d}. {a['title']}")
+            print(f"{i}. {a['title']}")
 
     def cleanDiscography(self, albums):
         targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
@@ -57,9 +74,45 @@ class Downloader:
 
         return finalAlbums
 
+    def getTrackList(self, album):
+        url = f"{self.baseURL}/album/{album['id']}"
+        data = requests.get(url).json()
+        tracks = data["tracks"]["data"]
+        for track in tracks:
+            print(f"Title: {track["title"]} Artist: {track["artist"]["name"]} Link: {track['link']} Album: {track['album']['title']}")
+        return tracks
+
+    def assembleInstallQueue(self, tracks):
+        queue = Queue()
+        for track in tracks:
+            queue.put(track)
+        return queue
+
+    def installTracks(self, queue):
+        while not queue.empty():
+            track = queue.get()
+
+            title = track["title"]
+            artist = track["artist"]["name"]
+            album = track["album"]["title"]
+
+            query = f"{title} - {artist} Official Music Video"
+            outputDir= os.path.join(f"{self.musicDir}/{artist}/{album}",f"{title}.%(ext)s")
+            opts = self.config.copy()
+            opts["outtmpl"] = outputDir
+
+            searchURL = f"ytsearch:{query}"
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([searchURL])
+
+    def artistToInstalled(self, artist, qty=10):
+        albums = self.getDiscog(artist,qty=qty)
+        self.prettyPrint(albums)
+        for album in albums:
+            installQueue = self.assembleInstallQueue(self.getTrackList(album))
+            downloader.installTracks(installQueue)
 
 if __name__ == "__main__":
     downloader = Downloader()
-    albums = downloader.getDiscog("The Dismemberment Plan")
-    downloader.prettyPrint(albums)
-    print(albums[0]["id"])
+    downloader.artistToInstalled(input("Enter the artist: "), qty=10)
+

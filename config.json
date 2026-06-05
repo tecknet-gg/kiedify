@@ -1,0 +1,16 @@
+{
+  "opt": {
+    "format": "bestaudio/best",
+    "merge_output_format": "mp3",
+    "playlistend": 1,
+    "outtmpl": "/Users/jeevan/Documents/Python/MusicTTS/Music/%(title)s.%(ext)s",
+    "noplaylist": true,
+    "postprocessors": [
+      {
+        "key": "FFmpegExtractAudio",
+        "preferredcodec": "mp3",
+        "preferredquality": "192"
+      }
+    ]
+  }
+}
