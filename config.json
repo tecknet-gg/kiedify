@@ -1,10 +1,25 @@
 {
   "opt": {
     "format": "bestaudio/best",
-    "merge_output_format": "mp3",
-    "playlistend": 1,
-    "outtmpl": "/Users/jeevan/Documents/Python/MusicTTS/Music/%(title)s.%(ext)s",
     "noplaylist": true,
+
+    "outtmpl": "/Users/jeevan/Documents/Python/MusicTTS/Music/%(artist)s/%(album)s/%(title)s.%(ext)s",
+
+    "merge_output_format": "mp3",
+
+    "cookiesfrombrowser": ["firefox"],
+
+    "extractor_args": {
+      "youtube": {
+        "remote_components": "ejs:github",
+        "player_client": ["android", "web"]
+      }
+    },
+
+    "http_headers": {
+      "User-Agent": "Mozilla/5.0"
+    },
+
     "postprocessors": [
       {
         "key": "FFmpegExtractAudio",

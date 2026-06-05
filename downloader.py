@@ -3,12 +3,17 @@ from queue import Queue
 import yt_dlp
 import json
 import os
+import threading
+import time
 
 class Downloader:
     def __init__(self):
         self.baseURL = "https://api.deezer.com"
         self.musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
         self.config = {}
+        self.installQueue = Queue()
+        self.passed = 0
+        self.failed = 0
         try:
             with open("config.json", "r") as f:
                 self.config = json.load(f)
@@ -30,9 +35,9 @@ class Downloader:
 
     def getTopAlbums(self, artist):
         artist = self.getArtist(artist)
-        artist_id = artist["id"]
+        artistID = artist["id"]
 
-        url = f"{self.baseURL}/artist/{artist_id}/albums"
+        url = f"{self.baseURL}/artist/{artistID}/albums"
         res = requests.get(url, params={"limit": 100}).json()
 
         albums = []
@@ -48,7 +53,7 @@ class Downloader:
         return item["rank"]
 
     def prettyPrint(self, albums):
-        print("top albums:")
+        print("Top albums:")
         for i, a in enumerate(albums, 1):
             print(f"{i}. {a['title']}")
 
@@ -79,7 +84,7 @@ class Downloader:
         data = requests.get(url).json()
         tracks = data["tracks"]["data"]
         for track in tracks:
-            print(f"Title: {track["title"]} Artist: {track["artist"]["name"]} Link: {track['link']} Album: {track['album']['title']}")
+            print(f"Title: {track['title']} Artist: {track['artist']['name']} Link: {track['link']} Album: {track['album']['title']}")
         return tracks
 
     def assembleInstallQueue(self, tracks):
@@ -103,16 +108,48 @@ class Downloader:
 
             searchURL = f"ytsearch:{query}"
             with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([searchURL])
+                try:
+                    ydl.download([searchURL])
+                    self.passed += 1
+                except yt_dlp.DownloadError as error:
+                    print(f"Error downloading {title}: {error}")
+                    self.failed += 1
 
-    def artistToInstalled(self, artist, qty=10):
+    def artistToInstalled(self, artist, qty=10, nthreads=3):
         albums = self.getDiscog(artist,qty=qty)
         self.prettyPrint(albums)
+        self.passed = 0
+        self.failed = 0
+
         for album in albums:
-            installQueue = self.assembleInstallQueue(self.getTrackList(album))
-            downloader.installTracks(installQueue)
+            tracks = self.getTrackList(album)
+            for track in tracks:
+                self.installQueue.put(track)
+
+        threads = []
+        for i in range(nthreads):
+            thread = threading.Thread(target=self.installWorker)
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        return self.passed, self.failed
+
+    def installWorker(self):
+        self.installTracks(self.installQueue)
+
+
 
 if __name__ == "__main__":
+    artist = input("Enter the artist: ")
+
+    timeStart = time.perf_counter()
     downloader = Downloader()
-    downloader.artistToInstalled(input("Enter the artist: "), qty=10)
+    passed, failed = downloader.artistToInstalled(artist, qty=1, nthreads=10)
+    timeEnd = time.perf_counter()
+    print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
+    if passed!=0:
+        print(f"Time per song:{round((timeEnd - timeStart)/passed, 2)}")
 
