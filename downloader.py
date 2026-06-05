@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     timeStart = time.perf_counter()
     downloader = Downloader()
-    passed, failed = downloader.artistToInstalled(artist, qty=1, nthreads=10)
+    passed, failed = downloader.artistToInstalled(artist, qty=5, nthreads=15)
     timeEnd = time.perf_counter()
     print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
     if passed!=0:
