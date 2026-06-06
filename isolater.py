@@ -14,6 +14,7 @@ class Preprocessor:
 
 
 if __name__ == "__main__":
-    inputPath = "/Users/jeevan/Documents/Python/MusicTTS/Music/Weezer/Weezer (Blue Album)/Say It Ain't So (Original Mix).mp3"
-    outputDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated"
-
+    inputPath = "/Users/jeevan/Documents/Python/MusicTTS/Music/Green Day/American Idiot/American Idiot.mp3"
+    outputDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated/Paramore"
+    preprocessor = Preprocessor()
+    preprocessor.separateTrack(inputPath, outputDir)

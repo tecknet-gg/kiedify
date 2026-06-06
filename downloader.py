@@ -3,17 +3,20 @@ from queue import Queue
 import yt_dlp
 import json
 import os
+import shutil
 import threading
 import time
 
 class Downloader:
-    def __init__(self):
+    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
         self.baseURL = "https://api.deezer.com"
-        self.musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
+        self.musicDir = musicDir
         self.config = {}
         self.installQueue = Queue()
+
         self.passed = 0
         self.failed = 0
+
         try:
             with open("config.json", "r") as f:
                 self.config = json.load(f)
@@ -135,11 +138,50 @@ class Downloader:
         for thread in threads:
             thread.join()
 
+        print("Cleaning output")
+
+        self.cleanDir()
+
+        print("Done!")
+
         return self.passed, self.failed
 
     def installWorker(self):
         self.installTracks(self.installQueue)
 
+    def cleanDir(self):
+        for artist in os.listdir(self.musicDir):
+            artistPath = os.path.join(self.musicDir, artist) #creating the ~/Raw/Weezer path
+            if not os.path.isdir(artistPath): #skip if doesn't exist
+                continue
+
+            for album in os.listdir(artistPath):
+                albumPath = os.path.join(artistPath, album)
+                if not os.path.isdir(albumPath):
+                    continue #same as before at the album level
+
+                for root, dirs, files in os.walk(albumPath, topdown=False):
+                    if root == albumPath: #skip is the root of every file is the same as the album's path
+                        continue
+
+                    for file in files:
+                        curentPath = ""
+                        targetPath = ""
+
+                        if file.endswith(".mp3"):
+                            currentPath = os.path.join(root, file)
+                            targetPath = os.path.join(albumPath, file) #targets the album root
+
+                        try:
+                            shutil.move(currentPath, targetPath)
+                        except shutil.Error as error:
+                            print(f"Error moving {currentPath} to {targetPath}: {error}")
+
+                        try:
+                            if not os.listdir(root):
+                                os.rmdir(root)
+                        except OSError as error:
+                            print(f"Error deleting empty directory: {error}")
 
 
 if __name__ == "__main__":
@@ -147,7 +189,7 @@ if __name__ == "__main__":
 
     timeStart = time.perf_counter()
     downloader = Downloader()
-    passed, failed = downloader.artistToInstalled(artist, qty=5, nthreads=15)
+    passed, failed = downloader.artistToInstalled(artist, qty=2, nthreads=15)
     timeEnd = time.perf_counter()
     print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
     if passed!=0:
