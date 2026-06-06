@@ -16,6 +16,7 @@ class Downloader:
 
         self.passed = 0
         self.failed = 0
+        self.manifestLock = threading.Lock()
 
         try:
             with open("config.json", "r") as f:
@@ -113,10 +114,72 @@ class Downloader:
             with yt_dlp.YoutubeDL(options) as ydl:
                 try:
                     ydl.download([searchURL])
-                    self.passed += 1
+                    print(f"Successfully downloaded {title}")
+
+                    with self.manifestLock:
+                        self.updateTrackPath(artist, album, title, outputDir)
+                    self.passed += 1 
                 except yt_dlp.DownloadError as error:
                     print(f"Error downloading {title}: {error}")
                     self.failed += 1
+
+    def updateTrackPath(self,deezerID , artist, album, outputDir):
+        albumDir = os.path.join(self.musicDir, artist, album)
+        manifestPath = os.path.join(albumDir, "album.json")
+
+        if not(os.path.exists(manifestPath)):
+            os.makerdirs(albumDir, exist_ok=True)
+            data = {
+                "artist": artist,
+                "album": album,
+                deezerID: None,
+                "tracks": []
+            }
+            return
+
+        try:
+            with open(manifestPath, r) as manifest:
+                data = json.load(manifest)
+
+                trackUpdate = False
+                for track in data.get("tracks", []):
+                    if track["title"].lower() == title.lower():
+                        track["file"] = outputDir
+                        trackUpdate = True
+                        break
+                if trackUpdate:
+                    with open(manifestPath, "w") as manifest:
+                        json.dump(data, manifest, indent=4)
+
+        except Exception as error:
+            print(f"Error updating manifest {error}")
+
+
+
+
+    def writeAlbumManifest(self, artist, album, tracks):
+        albumDir = os.path.join(self.musicDir, artist, album["title"])
+        os.makedirs(albumDir, exist_ok=True)
+
+        data = {
+            "artist": artist,
+            "album": album["title"],
+            "deezerId": album["id"],
+            "tracks": []
+        }
+
+        for i, track in enumerate(tracks):
+            data["tracks"].append({
+                "id": f"{artist}_{album['id']}_{i}",
+                "title": track["title"],
+                "trackNumber": i+1,
+                "deezerID": track["id"],
+                "file": None
+            })
+
+        with open(os.path.join(albumDir, f"album.json"), "w") as f:
+            json.dump(data, f, indent=4)
+
 
     def artistToInstalled(self, artist, qty=10, nthreads=3):
         albums = self.getDiscog(artist,qty=qty)
@@ -126,6 +189,8 @@ class Downloader:
 
         for album in albums:
             tracks = self.getTrackList(album)
+            self.writeAlbumManifest(artist,album,tracks)
+
             for track in tracks:
                 self.installQueue.put(track)
 
@@ -141,6 +206,8 @@ class Downloader:
         print("Cleaning output")
 
         self.cleanDir()
+
+
 
         print("Done!")
 
