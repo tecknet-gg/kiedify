@@ -32,41 +32,40 @@ class Downloader:
 
     def getArtist(self, artist):
         url = f"{self.baseURL}/search/artist"
-        res = requests.get(url, params={"q": artist}).json()
+        result = requests.get(url, params={"q": artist}).json() #querying the artist from deezer
 
-        return res["data"][0]
+        return result["data"][0]
 
     def getTopAlbums(self, artist):
-        artist = self.getArtist(artist)
+        artist = self.getArtist(artist) #gets top albums
         artistID = artist["id"]
 
         url = f"{self.baseURL}/artist/{artistID}/albums"
-        res = requests.get(url, params={"limit": 100}).json()
+        result = requests.get(url, params={"limit": 100}).json()
 
         albums = []
 
-        for a in res["data"]:
-            albums.append({"id": a["id"], "title": a["title"], "rank": a.get("fans", 0)})
+        for album in result["data"]:
+            albums.append({"id": album["id"], "title": album["title"], "rank": album.get("fans", 0)})
 
         albums.sort(key=self.sortByRank, reverse=True)
-
         return albums
 
     def sortByRank(self, item):
-        return item["rank"]
+        return item["rank"] #custom sort key to sort by item rank
 
     def prettyPrint(self, albums):
         print("Top albums:")
-        for i, a in enumerate(albums, 1):
-            print(f"{i}. {a['title']}")
+        for i, album in enumerate(albums, 1):
+            print(f"{i}. {album['title']}")
 
     def cleanDiscography(self, albums):
         targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
         clean = []
-        for a in albums:
-            title = a["title"].lower()
-            if not(any(elem in title for elem in targets)):
-                clean.append(a)
+        for album in albums:
+            title = album["title"].lower()
+            if not(any(elem in title for elem in targets)): #removes albums with said words
+                clean.append(album)
 
         return clean
 
@@ -105,12 +104,13 @@ class Downloader:
             album = track["album"]["title"]
 
             query = f"{title} - {artist} Official Music Video"
-            outputDir= os.path.join(f"{self.musicDir}/{artist}/{album}",f"{title}.%(ext)s")
-            opts = self.config.copy()
-            opts["outtmpl"] = outputDir
+            outputDir = os.path.join(f"{self.musicDir}/{artist}/{album}", f"{title}.mp3")
+
+            options = self.config.copy()
+            options["outtmpl"] = outputDir
 
             searchURL = f"ytsearch:{query}"
-            with yt_dlp.YoutubeDL(opts) as ydl:
+            with yt_dlp.YoutubeDL(options) as ydl:
                 try:
                     ydl.download([searchURL])
                     self.passed += 1
@@ -183,14 +183,33 @@ class Downloader:
                         except OSError as error:
                             print(f"Error deleting empty directory: {error}")
 
+    def queueArtists(self,artists, qty=10, nthreads=3):
+        passed, failed = 0, 0
+        for artist in artists:
+            passed, failed  = self.artistToInstalled(artist, qty=qty, nthreads=nthreads)
+            self.passed += passed
+            self.failed += failed
+        return self.passed, self.failed
+
+
+
 
 if __name__ == "__main__":
-    artist = input("Enter the artist: ")
 
-    timeStart = time.perf_counter()
-    downloader = Downloader()
-    passed, failed = downloader.artistToInstalled(artist, qty=2, nthreads=15)
-    timeEnd = time.perf_counter()
+    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+
+    if len(artists) == 0:
+        artist = input("Enter the artist: ")
+        timeStart = time.perf_counter()
+        downloader = Downloader()
+        passed, failed = downloader.artistToInstalled(artist, qty=2, nthreads=15)
+        timeEnd = time.perf_counter()
+    else:
+        timeStart = time.perf_counter()
+        downloader = Downloader()
+        passed, failed = downloader.queueArtists(artists, qty=10, nthreads=25)
+        timeEnd = time.perf_counter()
+
     print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
     if passed!=0:
         print(f"Time per song:{round((timeEnd - timeStart)/passed, 2)}")
