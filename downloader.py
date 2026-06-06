@@ -148,26 +148,33 @@ class Downloader:
         return self.passed, self.failed
 
     def getTrackList(self, album):
-        url = f"{self.baseURL}/album/{album['id']}"
-        data = requests.get(url).json()
+        URL = f"{self.baseURL}/album/{album['id']}"
+        data = requests.get(URL).json()
         tracks = data["tracks"]["data"]
 
         trackList = []
         for track in tracks:
             print(f"Title: {track['title']} Artist: {track['artist']['name']} Link: {track['link']} Album: {track['album']['title']}")
-            trackList.append(track)
+            trackList.append({
+                "title": track["title"],
+                "artist": track["artist"]["name"],
+                "album": track["album"]["title"],
+                "id": track["id"]
+            })
 
-        targetPath = os.path.join(f"{self.musicDir}/Raw/{track['artist']['name']}")
-        fileName = f"{track['artist']['name']}.json"
-        targetPath = os.path.join(targetPath, fileName)
-        os.makedirs(targetPath, exist_ok=True)
+        artistName = album.get("artist", {}).get("name", trackList[0]["artist"]) if trackList else "Unknown"
+        albumDir = os.path.join(self.musicDir, artistName, album["title"])
+
+        os.makedirs(albumDir, exist_ok=True)
+        targetFile = os.path.join(albumDir, f"{album['title']}.json")
+
 
         try:
-            with open(targetPath, "w", encoding="utf-8") as f:
+            with open(targetFile, "w") as f:
                 json.dump(trackList, f, indent=4)
-            print(f"Successfully wrote to {targetPath}")
+            print(f"Successfully wrote to {targetFile}")
         except Exception as e:
-            print(f"Error writing to {targetPath}: {e}")
+            print(f"Error writing to {targetFile}: {e}")
 
         return tracks
 
