@@ -104,7 +104,7 @@ class Downloader:
             album = track["album"]["title"]
 
             query = f"{title} - {artist} Official Music Video"
-            outputDir = os.path.join(f"{self.musicDir}/{artist}/{album}", f"{title}.mp3")
+            outputDir = os.path.join(f"{self.musicDir}/{artist}/{album}", f"{title}")
 
             options = self.config.copy()
             options["outtmpl"] = outputDir
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         artist = input("Enter the artist: ")
         timeStart = time.perf_counter()
         downloader = Downloader()
-        passed, failed = downloader.artistToInstalled(artist, qty=2, nthreads=15)
+        passed, failed = downloader.artistToInstalled(artist, qty=1, nthreads=15)
         timeEnd = time.perf_counter()
     else:
         timeStart = time.perf_counter()

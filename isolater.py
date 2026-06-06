@@ -1,24 +1,32 @@
 import queue
 import subprocess
 import sys
+import threading
 import time
 import os
 import shutil
 
 
 class Preprocessor:
-    def __init__(self, rawDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Raw", targetDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated"):
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", targetDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated"):
         self.processQueue = queue.Queue()
-        self.rawDir = rawDir
+        self.dir = dir
+        self.rawDir = os.path.join(dir,"Raw")
         self.targetDir = targetDir
 
+
+
     def separateTrack(self, inputPath, outputDir):
-        subprocess.run([sys.executable, "-m", "demucs", "-o", outputDir, inputPath], check=True)
+        subprocess.run([sys.executable, "-m", "demucs", "--mp3", "--mp3-bitrate", "320", "--two-stem=vocals", "-o", outputDir, inputPath], check=True)
 
     def generateQueue(self):
         filesPath, queuePath, targetPath = "", os.path.join(self.rawDir,"Queue"), ""
         os.makedirs(queuePath, exist_ok=True)
         for root, dirs, files in os.walk(self.rawDir):
+
+            if "Queue" in root:
+                continue
+
             for file in files:
                 if not(file.endswith(".mp3")):
                     continue
@@ -28,17 +36,63 @@ class Preprocessor:
                 print(f"File: {filePath}")
 
                 movePath = os.path.join(queuePath, file)
-                artist = (filePath.split("Raw/")[1]).split("/")[0]
+                artist = os.path.relpath(filePath, self.rawDir)
+                artist = artist.split(os.sep)[0]
 
-                shutil.move(filePath, movePath)
+                newPath = shutil.move(filePath, movePath)
 
-                targetPath = os.path.join(root, "Isolated", artist, file)
+                targetPath = os.path.join(self.dir, "Isolated", artist)
                 print(f"Target: {targetPath}")
 
-                item = [filePath, targetPath, artist]
+                item = [newPath, targetPath, artist]
                 self.processQueue.put(item)
 
+
+    def process(self):
+        while True:
+            try:
+                filePath, targetPath, artist = self.processQueue.get(timeout=1)
+            except queue.Empty:
+                return
+
+            try:
+                os.makedirs(targetPath, exist_ok=True)
+                self.separateTrack(filePath, targetPath)
+
+                songName = os.path.basename(filePath).rsplit(".mp3", 1)[0]
+
+                demucsOutputDir = os.path.join(targetPath, "htdemucs", songName)
+
+                finalOutputDir = os.path.join(self.dir, "Processed", artist)
+                os.makedirs(finalOutputDir, exist_ok=True)
+
+                vocalStem = os.path.join(demucsOutputDir, "vocals.mp3")
+
+                if os.path.exists(vocalStem):
+                    destination = os.path.join(finalOutputDir, f"{songName}.mp3")
+                    shutil.move(vocalStem, destination)
+
+            except Exception as e:
+                print(e)
+            finally:
+                self.processQueue.task_done()
+
+
+    def processMulithreaded(self, nthread=4):
+        threads = []
+        for i in range(nthread):
+            thread = threading.Thread(target=self.process)
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        return True
+
+
     def cleanRaw(self):
+        # clean raw of empty folders
         pass
 
 
@@ -49,3 +103,4 @@ if __name__ == "__main__":
     outputDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated/Paramore"
     preprocessor = Preprocessor()
     preprocessor.generateQueue()
+    preprocessor.processMulithreaded(nthread=4)
