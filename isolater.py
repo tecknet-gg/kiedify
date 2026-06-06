@@ -17,11 +17,42 @@ class Preprocessor:
 
 
     def separateTrack(self, inputPath, outputDir):
-        subprocess.run([sys.executable, "-m", "demucs", "--mp3", "--mp3-bitrate", "320", "--two-stem=vocals", "-o", outputDir, inputPath], check=True)
+        timeStart = time.perf_counter()
+
+        try:
+            subprocess.run([sys.executable, "-m", "demucs", "--mp3", "--mp3-bitrate", "320", "--two-stem=vocals", "-o", outputDir, inputPath], check=True)
+        except Exception as e:
+            print(e)
+        timeElapsed = time.perf_counter() - timeStart
+
+        return timeElapsed
 
     def generateQueue(self):
         filesPath, queuePath, targetPath = "", os.path.join(self.rawDir,"Queue"), ""
         os.makedirs(queuePath, exist_ok=True)
+
+        recovered = 0
+        for file in os.listdir(queuePath):
+            if not(file.endswith(".mp3")):
+                continue
+
+            filePath = os.path.join(queuePath, file)
+            name = os.path.basename(filePath)
+            name, ext = os.path.splitext(name)
+
+
+            if "?" in name:
+                songName, artist = name.rsplit("?", 1)
+            else:
+                pass
+                #delete file
+
+            targetPath = os.path.join(self.dir, "Isolated", artist)
+            self.processQueue.put((filePath, targetPath, artist))
+            recovered += 1
+
+        print("Recovered", recovered)
+
         for root, dirs, files in os.walk(self.rawDir):
 
             if "Queue" in root:
@@ -35,9 +66,14 @@ class Preprocessor:
                 filePath = os.path.join(root, file)
                 print(f"File: {filePath}")
 
-                movePath = os.path.join(queuePath, file)
                 artist = os.path.relpath(filePath, self.rawDir)
                 artist = artist.split(os.sep)[0]
+                artist = artist.replace("?", "").strip()  # so it doesn't break if artists' name has a ?
+
+                name, ext = os.path.splitext(file)
+                newName = f"{name}?{artist}{ext}"
+
+                movePath = os.path.join(queuePath, newName)
 
                 newPath = shutil.move(filePath, movePath)
 
@@ -51,7 +87,6 @@ class Preprocessor:
     def process(self):
         while True:
 
-            timeStart = time.perf_counter()
             try:
                 filePath, targetPath, artist = self.processQueue.get(timeout=1)
             except queue.Empty:
@@ -59,9 +94,11 @@ class Preprocessor:
 
             try:
                 os.makedirs(targetPath, exist_ok=True)
-                self.separateTrack(filePath, targetPath)
+                elapsedTime = self.separateTrack(filePath, targetPath)
 
                 songName = os.path.basename(filePath).rsplit(".mp3", 1)[0]
+                songName, _ = songName.rsplit("?", 1)
+
                 print(f"Processing: {songName}")
 
                 demucsOutputDir = os.path.join(targetPath, "htdemucs", songName)
@@ -81,8 +118,7 @@ class Preprocessor:
                 if os.path.exists(filePath):
                     os.remove(filePath)
 
-                timeEnd = time.perf_counter()
-                print(f"Finished processing {songName} in {timeEnd - timeStart} seconds")
+                print(f"Finished processing {songName} in {elapsedTime} seconds")
                 self.processQueue.task_done()
 
 
