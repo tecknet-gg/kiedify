@@ -77,7 +77,10 @@ class Preprocessor:
             except Exception as e:
                 print(e)
             finally:
-                os.remove(filePath)
+
+                if os.path.exists(filePath):
+                    os.remove(filePath)
+
                 timeEnd = time.perf_counter()
                 print(f"Finished processing {songName} in {timeEnd - timeStart} seconds")
                 self.processQueue.task_done()
