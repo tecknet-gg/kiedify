@@ -50,6 +50,8 @@ class Preprocessor:
 
     def process(self):
         while True:
+
+            timeStart = time.perf_counter()
             try:
                 filePath, targetPath, artist = self.processQueue.get(timeout=1)
             except queue.Empty:
@@ -60,9 +62,9 @@ class Preprocessor:
                 self.separateTrack(filePath, targetPath)
 
                 songName = os.path.basename(filePath).rsplit(".mp3", 1)[0]
+                print(f"Processing: {songName}")
 
                 demucsOutputDir = os.path.join(targetPath, "htdemucs", songName)
-
                 finalOutputDir = os.path.join(self.dir, "Processed", artist)
                 os.makedirs(finalOutputDir, exist_ok=True)
 
@@ -75,6 +77,9 @@ class Preprocessor:
             except Exception as e:
                 print(e)
             finally:
+                os.remove(filePath)
+                timeEnd = time.perf_counter()
+                print(f"Finished processing {songName} in {timeEnd - timeStart} seconds")
                 self.processQueue.task_done()
 
 
