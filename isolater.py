@@ -54,7 +54,7 @@ class Preprocessor:
             self.processQueue.put((filePath, targetPath, artist))
             recovered += 1
 
-        print("Recovered", recovered)
+        print("Added", recovered)
 
         for root, dirs, files in os.walk(self.rawDir):
 
@@ -127,7 +127,7 @@ class Preprocessor:
         while True:
 
             try:
-                filePath, songName, artist, album = self.processQueue.get()
+                filePath, songName, artist, album = self.processQueue.get(timeout=1)
             except queue.Empty:
                 return
 
@@ -161,7 +161,7 @@ class Preprocessor:
                         try:
                             with open(sourceJson, "r") as f:
                                 originalTracks = json.load(f)
-                            currentTracks = next((t for t in orginalTracks if t['title'] == songName), None)
+                            currentTracks = next((t for t in originalTracks if t['title'] == songName), None)
 
                             if currentTracks:
                                 processedTracks = []
@@ -194,6 +194,7 @@ class Preprocessor:
 
                 print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
                 self.processQueue.task_done()
+                return
 
 
 
@@ -211,9 +212,42 @@ class Preprocessor:
         return True
 
 
-    def cleanRaw(self):
-        # clean raw of empty folders
-        pass
+    def cleanDir(self):
+        isolatedRoot = os.path.join(self.rawDir, "Isolated")
+
+        if os.path.exists(isolatedRoot):
+            for root, dirs, files in os.walk(isolatedRoot, topdown=False):
+                if "htdemucs" in root and root != (os.path.join(isolatedRoot, "htdemucs")):
+                    if "vocals.mp3" not in files:
+                        try:
+                            shutil.rmtree(root)
+                            print(f"Removed {root}")
+                        except Exception as e:
+                            print(f"Failed to remove {root}: {e}")
+            for root, dirs, files in os.walk(isolatedRoot, topdown=False):
+                if root != isolatedRoot and not os.listdir(root):
+                    try:
+                        os.rmdir(root)
+                        print(f"Removed {root}")
+                    except Exception as e:
+                        print(f"Failed to remove {root}: {e}")
+
+        if os.path.exists(self.rawDir):
+            for root, dirs, files in os.walk(self.rawDir, topdown=False):
+                if root == self.rawDir:
+                    continue
+
+                if not os.listdir(root):
+                    try:
+                        os.rmdir(root)
+                        print(f"Removed {root}")
+                    except Exception as e:
+                        print(f"Failed to remove {root}: {e}")
+
+        print("Cleanup finished.")
+
+
+
 
 
 
@@ -222,3 +256,4 @@ if __name__ == "__main__":
     preprocessor = Preprocessor()
     preprocessor.generateQueue2()
     preprocessor.processMulithreaded(nthread=4)
+    preprocessor.cleanDir()
