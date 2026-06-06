@@ -140,7 +140,7 @@ class Preprocessor:
                 print(f"Processing: {songName}")
                 elapsedTime = self.separateTrack(filePath, isolationTargetDir)
 
-                rawFolderName = os.path.splittext(os.path.basename(filePath))[0]
+                rawFolderName = os.path.splitext(os.path.basename(filePath))[0]
                 demucsOutputDir = os.path.join(isolationTargetDir, "htdemucs", rawFolderName)
 
                 finalOutputDir = os.path.join(self.dir, "Processed", artist, album)
@@ -156,6 +156,32 @@ class Preprocessor:
                     destination = os.path.join(finalOutputDir, f"{songName}.mp3")
                     shutil.move(vocalStem, destination)
                     print(f"Moved {songName}.mp3 to {destination}")
+
+                    if os.path.exists(sourceJson):
+                        try:
+                            with open(sourceJson, "r") as f:
+                                originalTracks = json.load(f)
+                            currentTracks = next((t for t in orginalTracks if t['title'] == songName), None)
+
+                            if currentTracks:
+                                processedTracks = []
+
+                            if os.path.exists(destJson):
+                                try:
+                                    with open(destJson, "r") as f:
+                                        processedTracks = json.load(f)
+                                except Exception as e:
+                                    print(f"Failed to load {destJson}: error: {e}")
+
+                            if currentTracks not in processedTracks:
+                                processedTracks.append(currentTracks)
+
+                            with open(destJson, "w") as f:
+                                json.dump(processedTracks, f, indent=4)
+
+                        except Exception as e:
+                            print(f"Failed to save {destJson}: error: {e}")
+
                 else:
                     print(f"Missing file for {songName}")
 
