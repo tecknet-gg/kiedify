@@ -7,8 +7,8 @@ import shutil
 import threading
 import time
 
-class Downloader:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
+class Downloader2:
+    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
         self.baseURL = "https://api.deezer.com"
         self.musicDir = musicDir
         self.config = {}
@@ -16,33 +16,49 @@ class Downloader:
 
         self.passed = 0
         self.failed = 0
+        self.manifestLock = threading.Lock()
 
-        try: # loading config files
-            with open("config.json", "r") as configFile:
-                self.config = json.load(configFile)
+        try:
+            with open("config.json", "r") as f:
+                self.config = json.load(f)
         except FileNotFoundError:
-            print("Configuration file not found.")
+            print("Config file missing")
         except json.decoder.JSONDecodeError:
-            print("Configuration file is not valid JSON.")
+            print("Config file invalid")
 
         self.config = self.config.get("opt",{})
 
+
         print("Initialised")
 
-
-
     def getArtist(self, artist):
-        URL = f"{self.baseURL}/search/artist/"
-        result = requests.get(URL, params={"q": artist}).json() #querying artist from deezer
+        url = f"{self.baseURL}/search/artist"
+        result = requests.get(url, params={"q": artist}).json() #querying the artist from deezer
+
         return result["data"][0]
 
+    def getTopAlbums(self, artist):
+        artist = self.getArtist(artist) #gets top albums
+        artistID = artist["id"]
 
+        url = f"{self.baseURL}/artist/{artistID}/albums"
+        result = requests.get(url, params={"limit": 100}).json()
+
+        albums = []
+
+        for album in result["data"]:
+            albums.append({"id": album["id"], "title": album["title"], "rank": album.get("fans", 0)})
+
+        albums.sort(key=self.sortByRank, reverse=True)
+        return albums
+
+    def sortByRank(self, item):
+        return item["rank"] #custom sort key to sort by item rank
 
     def prettyPrint(self, albums):
-        print("Top Albums")
-        for i, album in enumerate(albums):
-            print(f"[{i}] - {album['title']}")
-
+        print("Top albums:")
+        for i, album in enumerate(albums, 1):
+            print(f"{i}. {album['title']}")
 
     def cleanDiscography(self, albums):
         targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
@@ -51,6 +67,7 @@ class Downloader:
             title = album["title"].lower()
             if not(any(elem in title for elem in targets)): #removes albums with said words
                 clean.append(album)
+
         return clean
 
     def getDiscog(self, artist, qty=10):
@@ -65,26 +82,15 @@ class Downloader:
 
         return finalAlbums
 
-    def getTopAlbums(self, artist):
+    def getTrackList(self, album):
+        url = f"{self.baseURL}/album/{album['id']}"
+        data = requests.get(url).json()
+        tracks = data["tracks"]["data"]
+        for track in tracks:
+            print(f"Title: {track['title']} Artist: {track['artist']['name']} Link: {track['link']} Album: {track['album']['title']}")
+        return tracks
 
-        artist = self.getArtist(artist) #get top albums
-        artistID = artist["id"]
-
-        URL = f"{self.baseURL}/artist/{artistID}/albums"
-        result = requests.get(URL, params={"limit": 100}).json()
-
-        albums = []
-        for album in result["data"]:
-            albums.append({"id": album["id"], "title": album["title"], "rank": album.get("fans", 0)})
-
-        albums.sort(key=self.sortByRank, reverse=True)
-
-        return albums
-
-    def sortByRank(self, album):
-        return album["rank"]
-
-    def assembleInstallQueue(self):
+    def assembleInstallQueue(self, tracks):
         queue = Queue()
         for track in tracks:
             queue.put(track)
@@ -109,10 +115,70 @@ class Downloader:
                 try:
                     ydl.download([searchURL])
                     print(f"Successfully downloaded {title}")
-                    self.passed += 1
+
+                    with self.manifestLock:
+                        self.updateTrackPath(artist, album, title, outputDir)
+                    self.passed += 1 
                 except yt_dlp.DownloadError as error:
                     print(f"Error downloading {title}: {error}")
                     self.failed += 1
+
+    def updateTrackPath(self,deezerID , artist, album, outputDir):
+        albumDir = os.path.join(self.musicDir, artist, album)
+        manifestPath = os.path.join(albumDir, "album.json")
+
+        if not(os.path.exists(manifestPath)):
+            os.makerdirs(albumDir, exist_ok=True)
+            data = {
+                "artist": artist,
+                "album": album,
+                deezerID: None,
+                "tracks": []
+            }
+            return
+
+        try:
+            with open(manifestPath, r) as manifest:
+                data = json.load(manifest)
+
+                trackUpdate = False
+                for track in data.get("tracks", []):
+                    if track["title"].lower() == title.lower():
+                        track["file"] = outputDir
+                        trackUpdate = True
+                        break
+                if trackUpdate:
+                    with open(manifestPath, "w") as manifest:
+                        json.dump(data, manifest, indent=4)
+
+        except Exception as error:
+            print(f"Error updating manifest {error}")
+
+
+
+
+    def writeAlbumManifest(self, artist, album, tracks):
+        albumDir = os.path.join(self.musicDir, artist, album["title"])
+        os.makedirs(albumDir, exist_ok=True)
+
+        data = {
+            "artist": artist,
+            "album": album["title"],
+            "deezerId": album["id"],
+            "tracks": []
+        }
+
+        for i, track in enumerate(tracks):
+            data["tracks"].append({
+                "id": f"{artist}_{album['id']}_{i}",
+                "title": track["title"],
+                "trackNumber": i+1,
+                "deezerID": track["id"],
+                "file": None
+            })
+
+        with open(os.path.join(albumDir, f"album.json"), "w") as f:
+            json.dump(data, f, indent=4)
 
 
     def artistToInstalled(self, artist, qty=10, nthreads=3):
@@ -123,6 +189,7 @@ class Downloader:
 
         for album in albums:
             tracks = self.getTrackList(album)
+            self.writeAlbumManifest(artist,album,tracks)
 
             for track in tracks:
                 self.installQueue.put(track)
@@ -145,14 +212,6 @@ class Downloader:
         print("Done!")
 
         return self.passed, self.failed
-
-    def getTrackList(self, album):
-        url = f"{self.baseURL}/album/{album['id']}"
-        data = requests.get(url).json()
-        tracks = data["tracks"]["data"]
-        for track in tracks:
-            print(f"Title: {track['title']} Artist: {track['artist']['name']} Link: {track['link']} Album: {track['album']['title']}")
-        return tracks
 
     def installWorker(self):
         self.installTracks(self.installQueue)
@@ -201,6 +260,7 @@ class Downloader:
 
 
 
+
 if __name__ == "__main__":
 
     #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
@@ -214,10 +274,11 @@ if __name__ == "__main__":
         timeEnd = time.perf_counter()
     else:
         timeStart = time.perf_counter()
-        downloader = Downloader2()
+        downloader = Downloader()
         passed, failed = downloader.queueArtists(artists, qty=10, nthreads=25)
         timeEnd = time.perf_counter()
 
     print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
     if passed!=0:
         print(f"Time per song:{round((timeEnd - timeStart)/passed, 2)}")
+
