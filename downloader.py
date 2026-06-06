@@ -200,9 +200,10 @@ if __name__ == "__main__":
     artists = []
     if len(artists) == 0:
         artist = input("Enter the artist: ")
+        numberAlbums = int(input("Enter the number of albums: "))
         timeStart = time.perf_counter()
         downloader = Downloader()
-        passed, failed = downloader.artistToInstalled(artist, qty=1, nthreads=15)
+        passed, failed = downloader.artistToInstalled(artist, qty=numberAlbums, nthreads=15)
         timeEnd = time.perf_counter()
     else:
         timeStart = time.perf_counter()

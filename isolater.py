@@ -41,8 +41,8 @@ class Preprocessor:
             name, ext = os.path.splitext(name)
 
 
-            if "?" in name:
-                songName, artist = name.rsplit("?", 1)
+            if "||" in name:
+                songName, artist = name.rsplit("||", 1)
             else:
                 pass
                 #delete file
@@ -68,10 +68,10 @@ class Preprocessor:
 
                 artist = os.path.relpath(filePath, self.rawDir)
                 artist = artist.split(os.sep)[0]
-                artist = artist.replace("?", "").strip()  # so it doesn't break if artists' name has a ?
+                artist = artist.replace("||", "").strip()  # so it doesn't break if artists' name has a ||
 
                 name, ext = os.path.splitext(file)
-                newName = f"{name}?{artist}{ext}"
+                newName = f"{name}||{artist}{ext}"
 
                 movePath = os.path.join(queuePath, newName)
 
@@ -92,16 +92,23 @@ class Preprocessor:
             except queue.Empty:
                 return
 
+
+            songName = ""
+            elapsedTime = 0
+            processingSuccess = False
+
             try:
                 os.makedirs(targetPath, exist_ok=True)
                 elapsedTime = self.separateTrack(filePath, targetPath)
 
+                rawFolder = os.path.basename(filePath).rsplit(".mp3",1)[0]
+
                 songName = os.path.basename(filePath).rsplit(".mp3", 1)[0]
-                songName, _ = songName.rsplit("?", 1)
+                songName, _ = rawFolder.rsplit("||", 1)
 
                 print(f"Processing: {songName}")
 
-                demucsOutputDir = os.path.join(targetPath, "htdemucs", songName)
+                demucsOutputDir = os.path.join(targetPath, "htdemucs", rawFolder)
                 finalOutputDir = os.path.join(self.dir, "Processed", artist)
                 os.makedirs(finalOutputDir, exist_ok=True)
 
@@ -110,9 +117,13 @@ class Preprocessor:
                 if os.path.exists(vocalStem):
                     destination = os.path.join(finalOutputDir, f"{songName}.mp3")
                     shutil.move(vocalStem, destination)
+                    print("Successfully moved vocals to destination")
+                else:
+                    print("Failed to move vocals to destination")
 
             except Exception as e:
                 print(e)
+
             finally:
 
                 if os.path.exists(filePath):
@@ -143,8 +154,6 @@ class Preprocessor:
 
 
 if __name__ == "__main__":
-    inputPath = "/Users/jeevan/Documents/Python/MusicTTS/Music/Green Day/American Idiot/American Idiot.mp3"
-    outputDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated/Paramore"
     preprocessor = Preprocessor()
     preprocessor.generateQueue()
     preprocessor.processMulithreaded(nthread=4)
