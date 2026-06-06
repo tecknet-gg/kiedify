@@ -8,7 +8,7 @@ import threading
 import time
 
 class Downloader:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
+    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
         self.baseURL = "https://api.deezer.com"
         self.musicDir = musicDir
         self.config = {}
@@ -196,8 +196,8 @@ class Downloader:
 
 if __name__ == "__main__":
 
-    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
-
+    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+    artists = []
     if len(artists) == 0:
         artist = input("Enter the artist: ")
         timeStart = time.perf_counter()
