@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 import os
+import json
 import shutil
 
 
@@ -13,6 +14,8 @@ class Preprocessor:
         self.dir = dir
         self.rawDir = os.path.join(dir,"Raw")
         self.targetDir = targetDir
+
+        self.manifestLock = threading.Lock()
 
 
 
@@ -84,53 +87,89 @@ class Preprocessor:
                 self.processQueue.put(item)
 
 
+        pass
+
+    def generateQueue2(self):
+        recovered = 0
+
+        for root, dirs, files in os.walk(self.rawDir):
+            for file in files:
+                if file.endswith(".json"):
+                    jsonPath = os.path.join(root, file)
+
+                    try:
+                        with open(jsonPath, "r") as f:
+                            tracks = json.load(f)
+                    except Exception as e:
+                        print(f"Failed to load {jsonPath}: error: {e}")
+                        continue
+
+                    for track in tracks:
+                        title = track["title"]
+                        artist = track["artist"]
+                        album = track["album"]
+
+                        albumDir = os.path.dirname(jsonPath)
+                        mp3Path = os.path.join(albumDir, f"{title}.mp3")
+
+                        if os.path.exists(mp3Path):
+                            self.processQueue.put((mp3Path, title, artist, album))
+                            recovered += 1
+                        else:
+                            print(f"Missing file for {title}")
+
+        print(f"Recovered: {recovered}")
+
+
+
+
     def process(self):
         while True:
 
             try:
-                filePath, targetPath, artist = self.processQueue.get(timeout=1)
+                filePath, songName, artist, album = self.processQueue.get()
             except queue.Empty:
                 return
 
-
-            songName = ""
             elapsedTime = 0
-            processingSuccess = False
 
             try:
-                os.makedirs(targetPath, exist_ok=True)
-                elapsedTime = self.separateTrack(filePath, targetPath)
-
-                rawFolder = os.path.basename(filePath).rsplit(".mp3",1)[0]
-
-                songName = os.path.basename(filePath).rsplit(".mp3", 1)[0]
-                songName, _ = rawFolder.rsplit("||", 1)
+                isolationTargetDir = os.path.join(self.dir, "Isolated", artist)
+                os.makedirs(isolationTargetDir, exist_ok=True)
 
                 print(f"Processing: {songName}")
+                elapsedTime = self.separateTrack(filePath, isolationTargetDir)
 
-                demucsOutputDir = os.path.join(targetPath, "htdemucs", rawFolder)
-                finalOutputDir = os.path.join(self.dir, "Processed", artist)
+                rawFolderName = os.path.splittext(os.path.basename(filePath))[0]
+                demucsOutputDir = os.path.join(isolationTargetDir, "htdemucs", rawFolderName)
+
+                finalOutputDir = os.path.join(self.dir, "Processed", artist, album)
                 os.makedirs(finalOutputDir, exist_ok=True)
 
-                vocalStem = os.path.join(demucsOutputDir, "vocals.mp3")
+                sourceJson = os.path.join(os.path.dirname(filePath), f"{album}.json")
+                destJson = os.path.join(finalOutputDir, f"{album}.json")
+
+
+                vocalStem = os.path.join(demucsOutputDir, f"vocals.mp3")
 
                 if os.path.exists(vocalStem):
                     destination = os.path.join(finalOutputDir, f"{songName}.mp3")
                     shutil.move(vocalStem, destination)
-                    print("Successfully moved vocals to destination")
+                    print(f"Moved {songName}.mp3 to {destination}")
                 else:
-                    print("Failed to move vocals to destination")
+                    print(f"Missing file for {songName}")
 
             except Exception as e:
-                print(e)
+                print(f"Failed to process {songName}: {e}")
 
             finally:
-
                 if os.path.exists(filePath):
                     os.remove(filePath)
 
-                print(f"Finished processing {songName} in {elapsedTime} seconds")
+                print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
                 self.processQueue.task_done()
+
+
 
 
     def processMulithreaded(self, nthread=4):
@@ -155,5 +194,5 @@ class Preprocessor:
 
 if __name__ == "__main__":
     preprocessor = Preprocessor()
-    preprocessor.generateQueue()
+    preprocessor.generateQueue2()
     preprocessor.processMulithreaded(nthread=4)
