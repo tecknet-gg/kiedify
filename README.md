@@ -5,11 +5,11 @@ Will take any text input and convert it to speech using an artist's music!
 Currently working on:
 - [x] Music Downloader
 - [x] Vocal Isolator
-- [] Lyric Sourcing
-- [] Word Level Syncing
-- [] Phoneme Level Syncing
-- [] Greedy Maxmial Matching Algorithm for Words
-- [] Phoneme Level Matching Algorithm
-- [] Pipeline Polishing
-- [] API Wrapping
-- [] Frontend
+- [ ] Lyric Sourcing
+- [ ] Word Level Syncing
+- [ ] Phoneme Level Syncing
+- [ ] Greedy Maxmial Matching Algorithm for Words
+- [ ] Phoneme Level Matching Algorithm
+- [ ] Pipeline Polishing
+- [ ] API Wrapping
+- [ ] Frontend
