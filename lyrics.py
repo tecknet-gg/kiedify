@@ -13,7 +13,7 @@ class LyricFinder:
         self.lyricsQueue = Queue()
 
         self.lock = threading.Lock()
-        self.URL = "https://lrclib.net/api/get"
+        self.URL = "https://lrclib.net/api/search"
 
         self.headers = {
             "User-Agent": "kiedify/v0.1 (https://github.com/tecknet-gg/kiedify; <hattijeevan@gmail.com>)",
@@ -155,20 +155,25 @@ class LyricFinder:
         while True:
             time.sleep(2)
             try:
-                songName, artist, duration = self.lyricsQueue.get(timeout=1)
+                songName, artist, duration, attempts = self.lyricsQueue.get(timeout=1)
             except Empty:
                 print("Queue empty, exiting.")
                 return
 
             try:
-                data = self.queryLyric(songName, artist, duration)
+                data = self.queryLyric(songName, artist, duration, attempts)
                 if data:
                     self.saveToJson(artist, songName, data)
                 else:
                     print(f"No lyrics found for {songName}")
             except Exception as e:
                 print(f"Failed to query lyric server: {e}")
-                continue
+                attempts += 1
+
+                if attempts > 4:
+                    continue
+                self.lyricsQueue.put((songName, artist, duration, attempts))
+                print(f"Retrying {songName} - attempt {attempts} of 5.")
             finally:
                 self.lyricsQueue.task_done()
 
@@ -288,7 +293,7 @@ class LyricFinder:
                 print(f"Failed to save {manifestPath}: error: {e}")
 
 
-    def queryLyric(self, songName, artist, duration):
+    def queryLyric(self, songName, artist, duration, attempts):
         payload = {
             "track_name": songName,
             "artist_name": artist,
@@ -298,9 +303,13 @@ class LyricFinder:
             payload["duration"] = (int(duration))
 
         response = requests.get(self.URL, headers=self.headers, params=payload)
+
         if response.status_code == 200:
             data = response.json()
-            return data
+            if isinstance(data, list) and len(data) > 0:
+                return data[0]
+            else:
+                return None
         else:
             print(f"Failed to query lyric server: {response.status_code}")
             return None
@@ -329,10 +338,10 @@ class LyricFinder:
                             if not track.get("lyricsFound"):
                                 duration = track.get("duration")
                                 if duration:
-                                    self.lyricsQueue.put((track["title"], track["artist"], duration))
+                                    self.lyricsQueue.put((track["title"], track["artist"], duration, 0))
                                 else:
                                     print(f"Missing duration for {track['title']}")
-                                    self.lyricsQueue.put((track["title"], track["artist"], None))
+                                    self.lyricsQueue.put((track["title"], track["artist"], None, 0))
 
     def testQueue(self):
         self.generateQueue()
