@@ -6,6 +6,7 @@ import os
 import shutil
 import threading
 import time
+from isolater import Preprocessor
 
 class Downloader:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
@@ -226,9 +227,8 @@ class Downloader:
 
 
 if __name__ == "__main__":
-
-    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
-    artists = []
+    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+    #artists = []
     if len(artists) == 0:
         artist = input("Enter the artist: ")
         numberAlbums = int(input("Enter the number of albums: "))
@@ -245,3 +245,9 @@ if __name__ == "__main__":
     print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
     if passed!=0:
         print(f"Time per song:{round((timeEnd - timeStart)/passed, 2)}")
+
+
+    processor = Preprocessor()
+    processor.generateQueue2()
+    processor.processMulithreaded(nthread=4)
+    processor.cleanDir()

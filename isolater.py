@@ -118,7 +118,7 @@ class Preprocessor:
                         else:
                             print(f"Missing file for {title}")
 
-        print(f"Recovered: {recovered}")
+        print(f"Added: {recovered}")
 
 
 
@@ -194,7 +194,7 @@ class Preprocessor:
 
                 print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
                 self.processQueue.task_done()
-                return
+
 
 
 
