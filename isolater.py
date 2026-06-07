@@ -159,25 +159,27 @@ class Preprocessor:
 
                     if os.path.exists(sourceJson):
                         try:
-                            with open(sourceJson, "r") as f:
-                                originalTracks = json.load(f)
-                            currentTracks = next((t for t in originalTracks if t['title'] == songName), None)
+                            with self.manifestLock:
+                                with open(sourceJson, "r") as f:
+                                    originalTracks = json.load(f)
+                                currentTracks = next((t for t in originalTracks if t['title'] == songName), None)
 
-                            if currentTracks:
-                                processedTracks = []
+                                if currentTracks:
+                                    processedTracks = []
 
-                            if os.path.exists(destJson):
-                                try:
-                                    with open(destJson, "r") as f:
-                                        processedTracks = json.load(f)
-                                except Exception as e:
-                                    print(f"Failed to load {destJson}: error: {e}")
+                                if os.path.exists(destJson):
+                                    try:
+                                        with open(destJson, "r") as f:
+                                            processedTracks = json.load(f)
 
-                            if currentTracks not in processedTracks:
-                                processedTracks.append(currentTracks)
+                                    except Exception as e:
+                                        print(f"Failed to load {destJson}: error: {e}")
 
-                            with open(destJson, "w") as f:
-                                json.dump(processedTracks, f, indent=4)
+                                if currentTracks not in processedTracks:
+                                    processedTracks.append(currentTracks)
+
+                                with open(destJson, "w") as f:
+                                    json.dump(processedTracks, f, indent=4)
 
                         except Exception as e:
                             print(f"Failed to save {destJson}: error: {e}")
@@ -188,12 +190,9 @@ class Preprocessor:
             except Exception as e:
                 print(f"Failed to process {songName}: {e}")
 
-            finally:
-                if os.path.exists(filePath):
-                    os.remove(filePath)
 
-                print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
-                self.processQueue.task_done()
+            print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
+            self.processQueue.task_done()
 
 
 
@@ -213,7 +212,7 @@ class Preprocessor:
 
 
     def cleanDir(self):
-        isolatedRoot = os.path.join(self.rawDir, "Isolated")
+        isolatedRoot = self.targetDir
 
         if os.path.exists(isolatedRoot):
             for root, dirs, files in os.walk(isolatedRoot, topdown=False):
@@ -254,6 +253,6 @@ class Preprocessor:
 
 if __name__ == "__main__":
     preprocessor = Preprocessor()
-    preprocessor.generateQueue2()
-    preprocessor.processMulithreaded(nthread=4)
+    #preprocessor.generateQueue2()
+    #preprocessor.processMulithreaded(nthread=4)
     preprocessor.cleanDir()
