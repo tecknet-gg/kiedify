@@ -6,18 +6,17 @@ import time
 import os
 import json
 import shutil
-
+from directory import DirectoryManager
 
 class Preprocessor:
-    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", targetDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Isolated"):
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.processQueue = queue.Queue()
         self.dir = dir
         self.rawDir = os.path.join(dir,"Raw")
-        self.targetDir = targetDir
+        self.targetDir = os.path.join(dir, "Isolated")
+        self.manager = DirectoryManager(dir)
 
         self.manifestLock = threading.Lock()
-
-
 
     def separateTrack(self, inputPath, outputDir):
         timeStart = time.perf_counter()
@@ -120,9 +119,6 @@ class Preprocessor:
 
         print(f"Added: {recovered}")
 
-
-
-
     def process(self):
         while True:
 
@@ -194,10 +190,6 @@ class Preprocessor:
             print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
             self.processQueue.task_done()
 
-
-
-
-
     def processMulithreaded(self, nthread=4):
         threads = []
         for i in range(nthread):
@@ -209,7 +201,6 @@ class Preprocessor:
             thread.join()
 
         return True
-
 
     def cleanDir(self):
         isolatedRoot = self.targetDir
@@ -246,12 +237,75 @@ class Preprocessor:
         print("Cleanup finished.")
 
 
+    def flattenDir(self):
+        processedRoot = os.path.join(self.dir, "Processed")
+        if not os.path.exists(processedRoot):
+            print("Directory missing")
+            return
 
+        for artist in os.listdir(processedRoot):
+            artistPath = os.path.join(processedRoot, artist)
+            if not os.path.isdir(artistPath):
+                continue
 
+            artistManifestPath = os.path.join(ArtistPath, f"{artist}.json")
+            allArtistTracks = []
 
+            for album in os.listdir(artistPath):
+                albumPath = os.path.join(artistPath, album)
 
+                if os.path.isdir(albumPath):
+                    albumJsonPath = os.path.join(albumPath, f"{album}.json")
+                    if os.path.exists(albumJsonPath):
+                        try:
+                            with open(albumJsonPath, "r") as f:
+                                tracks = json.load(f)
+                                for track in tracks:
+                                    if track not in allArtistTracks:
+                                        allArtistTracks.append(track)
+                        except Exception as e:
+                            print(f"Failed to load {albumJsonPath}: error: {e}")
 
+                    for root, dirs, files in os.walk(albumPath, topdown=False):
+                        for file in files:
+                            if file.endswith(".json"):
+                                continue
+
+                            currentFilePath = os.path.join(root, file)
+                            targetFilePath = os.path.join(artistPath, file)
+
+                            try:
+                                shutil.move(currentFilePath, targetFilePath)
+                                print(f"Moved {currentFilePath} to {targetFilePath}")
+                            except Exception as e:
+                                print(f"Failed to move {currentFilePath}: {e}")
+
+                    try:
+                        shutil.rmtree(albumPath)
+                    except Exception as e:
+                        print(f"Failed to remove {albumPath}: {e}")
+
+                    if allArtistTracks:
+                        if os.path.exists(artistManifestPath):
+                            try:
+                                with open(artistManifestPath, "r") as f:
+                                    existing = json.load(f)
+                                    for track in existing:
+                                        if track not in allArtistTracks:
+                                            allArtistTracks.append(track)
+                            except Exception as e:
+                                print(f"Failed to load {artistManifestPath}: error: {e}")
+
+                        try:
+                            with open(artistManifestPath, "w") as f:
+                                json.dump(allArtistTracks, f, indent=4)
+                            print(f"Consolidated manifest created for {artist}")
+                        except Exception as e:
+                            print(f"Failed to save {artistManifestPath}: error: {e}")
+
+        pass
 if __name__ == "__main__":
+
     preprocessor = Preprocessor()
     #preprocessor.generateQueue2()
     #preprocessor.processMulithreaded(nthread=4)

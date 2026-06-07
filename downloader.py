@@ -7,13 +7,15 @@ import shutil
 import threading
 import time
 from isolater import Preprocessor
+from directory import DirectoryManager
 
 class Downloader:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
+    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.baseURL = "https://api.deezer.com"
-        self.musicDir = musicDir
+        self.rawDir = os.path.join(musicDir,"Raw")
         self.config = {}
         self.installQueue = Queue()
+        manager = DirectoryManager(musicDir)
 
         self.passed = 0
         self.failed = 0
@@ -30,20 +32,15 @@ class Downloader:
 
         print("Initialised")
 
-
-
     def getArtist(self, artist):
         URL = f"{self.baseURL}/search/artist/"
         result = requests.get(URL, params={"q": artist}).json() #querying artist from deezer
         return result["data"][0]
 
-
-
     def prettyPrint(self, albums):
         print("Top Albums")
         for i, album in enumerate(albums):
             print(f"[{i}] - {album['title']}")
-
 
     def cleanDiscography(self, albums):
         targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
@@ -101,7 +98,7 @@ class Downloader:
             deezerId = track["id"]
 
             query = f"{title} - {artist} Official Music Video"
-            outputDir = os.path.join(f"{self.musicDir}/{artist}/{album}", f"{title}")
+            outputDir = os.path.join(f"{self.rawDir}/{artist}/{album}", f"{title}")
 
             options = self.config.copy()
             options["outtmpl"] = outputDir
@@ -115,7 +112,6 @@ class Downloader:
                 except yt_dlp.DownloadError as error:
                     print(f"Error downloading {title}: {error}")
                     self.failed += 1
-
 
     def artistToInstalled(self, artist, qty=10, nthreads=3):
         albums = self.getDiscog(artist,qty=qty)
@@ -140,8 +136,7 @@ class Downloader:
 
         print("Cleaning output")
 
-        self.cleanDir()
-
+        manager.cleanDownloadDir()
 
 
         print("Done!")
@@ -164,7 +159,7 @@ class Downloader:
             })
 
         artistName = album.get("artist", {}).get("name", trackList[0]["artist"]) if trackList else "Unknown"
-        albumDir = os.path.join(self.musicDir, artistName, album["title"])
+        albumDir = os.path.join(self.rawDir, artistName, album["title"])
 
         os.makedirs(albumDir, exist_ok=True)
         targetFile = os.path.join(albumDir, f"{album['title']}.json")
@@ -182,39 +177,6 @@ class Downloader:
     def installWorker(self):
         self.installTracks(self.installQueue)
 
-    def cleanDir(self):
-        for artist in os.listdir(self.musicDir):
-            artistPath = os.path.join(self.musicDir, artist) #creating the ~/Raw/Weezer path
-            if not os.path.isdir(artistPath): #skip if doesn't exist
-                continue
-
-            for album in os.listdir(artistPath):
-                albumPath = os.path.join(artistPath, album)
-                if not os.path.isdir(albumPath):
-                    continue #same as before at the album level
-
-                for root, dirs, files in os.walk(albumPath, topdown=False):
-                    if root == albumPath: #skip is the root of every file is the same as the album's path
-                        continue
-
-                    for file in files:
-                        curentPath = ""
-                        targetPath = ""
-
-                        if file.endswith(".mp3"):
-                            currentPath = os.path.join(root, file)
-                            targetPath = os.path.join(albumPath, file) #targets the album root
-
-                        try:
-                            shutil.move(currentPath, targetPath)
-                        except shutil.Error as error:
-                            print(f"Error moving {currentPath} to {targetPath}: {error}")
-
-                        try:
-                            if not os.listdir(root):
-                                os.rmdir(root)
-                        except OSError as error:
-                            print(f"Error deleting empty directory: {error}")
 
     def queueArtists(self,artists, qty=10, nthreads=3):
         passed, failed = 0, 0
@@ -227,8 +189,8 @@ class Downloader:
 
 
 if __name__ == "__main__":
-    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
-    #artists = []
+    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+    artists = []
     if len(artists) == 0:
         artist = input("Enter the artist: ")
         numberAlbums = int(input("Enter the number of albums: "))
@@ -250,4 +212,6 @@ if __name__ == "__main__":
     processor = Preprocessor()
     processor.generateQueue2()
     processor.processMulithreaded(nthread=4)
-    processor.cleanDir()
+    manager = DirectoryManager(musicDir)
+    manager.cleanIsolatedDir()
+    manager.flattenProcessedDir()
