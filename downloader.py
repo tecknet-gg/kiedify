@@ -97,7 +97,7 @@ class Downloader:
             album = track["album"]["title"]
             deezerId = track["id"]
 
-            query = f"{title} - {artist} Official Music Video"
+            query = f"{title} - {artist} Official Lyric Video"
             outputDir = os.path.join(f"{self.rawDir}/{artist}/{album}", f"{title}")
 
             options = self.config.copy()
