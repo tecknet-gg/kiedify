@@ -4,6 +4,7 @@ import threading
 from queue import Queue, Empty
 import requests
 from mutagen.mp3 import MP3
+import time
 
 
 class LyricFinder:
@@ -152,6 +153,7 @@ class LyricFinder:
 
     def getLyrics(self):
         while True:
+            time.sleep(2)
             try:
                 songName, artist, duration = self.lyricsQueue.get(timeout=1)
             except Empty:
@@ -184,8 +186,7 @@ class LyricFinder:
                 time = time.strip("[").strip()
                 text = text.strip()
 
-                if not text:
-                    continue
+
 
                 parts = time.split(":")
                 minutes = float(parts[0])
@@ -204,7 +205,8 @@ class LyricFinder:
                 continue
 
         final = []
-        for i in range(len(parsedLyrics) - 1):
+        for i in range(len(parsedLyrics)):
+            current = parsedLyrics[i]
             if i < len(parsedLyrics) - 1:
 
                 current["end"] = parsedLyrics[i+1]["start"]
@@ -247,33 +249,33 @@ class LyricFinder:
                 if self.cleanString(track.get("title")) == cleanTarget:
                     synced = lyricData.get("syncedLyrics")
                     plain = lyricData.get("plainLyrics")
-                    id = lyricData.get("id")
+                    trackId = lyricData.get("id")
 
-
+                    track["lyricsID"] = trackId
                     if synced:
                         parsed = self.parseSyncedLyrics(synced)
                         for line in parsed:
-                            line["id"] = id
-
                             track["lyrics"] = parsed
                             track["lyricsFound"] = True
                             track["syncedLyrics"] = True
-                            print(f"Synced lyrics found for {songName}")
 
                     elif plain:
                         track["lyrics"] = [{
-                            "id": id,
                             "text": plain,
                         }]
                         track["lyricsFound"] = True
                         track["syncedLyrics"] = False
-                        print(f"Synced lyrics missing for {songName}")
 
                     else:
                         print(f"No lyrics found for {songName}")
-
-                    track["lyricsPath"] = os.path.join(artistPath, f"{songName}.json")
                     manifestUpdated = True
+
+                    syncStatus = track["syncedLyrics"]
+                    if syncStatus:
+                        print(f"Synced lyrics found for {songName}")
+                    else:
+                        print(f"Synced lyrics not found for {songName}")
+
                     print("Lyrics saved")
                     break
 
@@ -287,19 +289,13 @@ class LyricFinder:
 
 
     def queryLyric(self, songName, artist, duration):
+        payload = {
+            "track_name": songName,
+            "artist_name": artist,
+        }
 
         if duration:
-            payload = {
-                "artist": artist,
-                "song": songName,
-                "duration": int(duration),
-            }
-        else:
-            payload = {
-                "artist": artist,
-                "song": songName,
-            }
-
+            payload["duration"] = (int(duration))
 
         response = requests.get(self.URL, headers=self.headers, params=payload)
         if response.status_code == 200:
@@ -308,6 +304,19 @@ class LyricFinder:
         else:
             print(f"Failed to query lyric server: {response.status_code}")
             return None
+
+    def gatherMulithreaded(self, nthread=15):
+        threads = []
+        for i in range(nthread):
+            thread = threading.Thread(target=self.getLyrics)
+            thread.start()
+            threads.append(thread)
+
+
+        for thread in threads:
+            thread.join()
+
+        return True
 
     def generateQueue(self):
         dir = os.path.join(self.musicDir, "Processed")
@@ -345,3 +354,5 @@ if __name__ == "__main__":
     lyricFinder = LyricFinder()
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
+    lyricFinder.generateQueue()
+    lyricFinder.gatherMulithreaded(nthread=5)
