@@ -210,7 +210,7 @@ if __name__ == "__main__":
 
 
     processor = Preprocessor()
-    processor.generateQueue2()
+    processor.generateQueue()
     processor.processMulithreaded(nthread=4)
     manager = DirectoryManager(musicDir)
     manager.cleanIsolatedDir()
