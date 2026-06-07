@@ -11,8 +11,15 @@ class LyricFinder:
         self.musicDir = musicDir
         self.injectDuration()
         self.lyricsQueue = Queue()
+
+        self.lock = threading.Lock()
+        self.URL = "https://lrclib.net/api/get"
+
+        self.headers = {
+            "User-Agent": "kiedify/v0.1 (https://github.com/tecknet-gg/kiedify; <hattijeevan@gmail.com>)",
+        }
+
         print("Initialised")
-        pass
 
     def injectDuration(self):
         print("Injecting duration metadata")
@@ -128,8 +135,23 @@ class LyricFinder:
 
         print("Metadata ammended")
 
-    def getLyrics(self, artist, songName):
+    def getLyrics(self):
         pass
+
+    def queryLyric(self, songName, artist, duration):
+        payload = {
+            "artist": artist,
+            "song": songName,
+            "duration": int(duration),
+        }
+
+        response = requests.post(self.URL, headers=self.headers, params=payload)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+        else:
+            print(f"Failed to query lyric server: {response.status_code}")
+            return None
 
     def generateQueue(self):
         dir = os.path.join(self.musicDir, "Processed")
