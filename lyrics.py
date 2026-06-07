@@ -9,7 +9,6 @@ from mutagen.mp3 import MP3
 class LyricFinder:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.musicDir = musicDir
-        self.injectDuration()
         self.lyricsQueue = Queue()
 
         self.lock = threading.Lock()
@@ -20,6 +19,18 @@ class LyricFinder:
         }
 
         print("Initialised")
+
+
+    def cleanString(self, text):
+        if not text:
+            return ""
+
+        clean = text.lower()
+
+        clean = clean.replace("&", "and")
+        clean = "".join(char for char in clean if char.isalnum())
+        return clean
+
 
     def injectDuration(self):
         print("Injecting duration metadata")
@@ -54,7 +65,11 @@ class LyricFinder:
 
                 audioPath = os.path.join(artistPath, file)
                 title = os.path.splitext(file)[0]
-                trackEntry = next((track for track in tracks if track.get("title" ) == title), None)
+
+                trackEntry = next((track for track in tracks if track.get("title") == title), None)
+                if not trackEntry:
+                    clean = self.cleanString(title)
+                    trackEntry = next((track for track in tracks if self.cleanString(track.get("title")) == clean), None)
 
                 if trackEntry:
                     try:
@@ -68,14 +83,14 @@ class LyricFinder:
                     except Exception as e:
                         print(f"Failed to gather duration for {title}: {e}")
 
-                if manifestUpdated:
-                    try:
-                        with open(manifestPath, "w") as f:
-                            json.dump(tracks, f, indent=4)
-                        print("Manifest succesfully updated")
-                    except Exception as e:
-                        print(f"Failed to save {manifestPath}: error: {e}")
-            print("Duration injection finished")
+            if manifestUpdated:
+                try:
+                    with open(manifestPath, "w") as f:
+                        json.dump(tracks, f, indent=4)
+                    print("Manifest succesfully updated")
+                except Exception as e:
+                    print(f"Failed to save {manifestPath}: error: {e}")
+        print("Duration injection finished")
 
     def getDuration(self, audioPath):
         try:
@@ -162,7 +177,26 @@ class LyricFinder:
                         tracks = json.load(f)
                         for track in tracks:
                             if not track.get("lyricsFound"):
-                                self.lyricsQueue.put((track["title"], track["artist"], track["duration"]))
+                                duration = track.get("duration")
+                                if duration:
+                                    self.lyricsQueue.put((track["title"], track["artist"], duration))
+                                else:
+                                    print(f"Missing duration for {track['title']}")
+                                    self.lyricsQueue.put((track["title"], track["artist"], None))
+
+
+
+    def testQueue(self):
+        self.generateQueue()
+        while not self.lyricsQueue.empty():
+            try:
+                item = self.lyricsQueue.get()
+                print(item)
+                self.lyricsQueue.task_done()
+            except KeyError:
+                print("Missing data, skipping.")
+
+
 
 
 
@@ -170,5 +204,6 @@ class LyricFinder:
 
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
-    lyricFinder.injectDuration()
     lyricFinder.ammendMetadata()
+    lyricFinder.injectDuration()
+    lyricFinder.testQueue()
