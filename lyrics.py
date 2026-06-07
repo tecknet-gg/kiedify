@@ -261,7 +261,6 @@ class LyricFinder:
 
                     track["lyricsID"] = trackId
                     if synced:
-                        parsed = self.parseSyncedLyrics(synced)
                         for line in parsed:
                             track["lyrics"] = parsed
                             track["lyricsFound"] = True
@@ -284,17 +283,21 @@ class LyricFinder:
                     else:
                         print(f"Synced lyrics not found for {songName}")
 
-                    self.processed += 1
+
                     break
 
-        if manifestUpdated:
-            try:
-                with open(manifestPath, "w") as f:
-                    json.dump(tracks, f, indent=4)
-                print("Manifest succesfully updated")
-                print(f"Processed: {self.processed}/{self.length}")
-            except Exception as e:
-                print(f"Failed to save {manifestPath}: error: {e}")
+
+        with self.lock:
+            if manifestUpdated:
+                try:
+                    with open(manifestPath, "w") as f:
+                        json.dump(tracks, f, indent=4)
+                    print("Manifest succesfully updated")
+                    with self.lock:
+                        self.processed += 1
+                        print(f"Processed: {self.processed}/{self.length}")
+                except Exception as e:
+                    print(f"Failed to save {manifestPath}: error: {e}")
 
 
     def queryLyric(self, songName, artist, duration, attempts):
