@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 
 import requests
 from mutagen.mp3 import MP3
@@ -8,6 +9,8 @@ from mutagen.mp3 import MP3
 class LyricFinder:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.musicDir = musicDir
+        self.injectDuration()
+        print("Initialised")
         pass
 
     def injectDuration(self):
@@ -75,6 +78,62 @@ class LyricFinder:
             duration = None
 
         return duration
+
+    def ammendMetadata(self):
+        print("Ammending metadata strcture")
+        processedDir = os.path.join(self.musicDir, "Processed")
+
+        if not os.path.exists(processedDir):
+            print("Directory missing")
+            return
+
+        for artist in os.listdir(processedDir):
+            artistPath = os.path.join(processedDir, artist)
+            if not os.path.isdir(artistPath):
+                continue
+
+            manifestPath = os.path.join(artistPath, f"{artist}.json")
+            if not os.path.exists(manifestPath):
+                print(f"Manifest missing, skipping {artist}")
+                continue
+            try:
+                with open(manifestPath, "r") as f:
+                    tracks = json.load(f)
+            except Exception as e:
+                print(f"Failed to load {manifestPath}: error: {e}")
+
+            manifestUpdated = False
+
+            for track in tracks:
+                if "lyricsFound" not in track:
+                    track["lyricsFound"] = False
+                    manifestUpdated = True
+
+                if "syncedLyrics" not in track:
+                    track["syncedLyrics"] = False
+                    manifestUpdated = True
+
+                if "lyricsPath" not in track:
+                    track["lyricsPath"] = None
+                    manifestUpdated = True
+
+            if manifestUpdated:
+                try:
+                    with open(manifestPath, "w") as f:
+                        json.dump(tracks, f, indent=4)
+                    print("Manifest succesfully updated")
+                except Exception as e:
+                    print(f"Failed to save {manifestPath}: error: {e}")
+
+        print("Metadata ammended")
+
+    def getLyrics(self, artist, songName):
+        pass
+
+    def generateQueue(self):
+        recovered = 0
+
+
 
 
 if __name__ == "__main__":
