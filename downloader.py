@@ -15,7 +15,7 @@ class Downloader:
         self.rawDir = os.path.join(musicDir,"Raw")
         self.config = {}
         self.installQueue = Queue()
-        manager = DirectoryManager(musicDir)
+        self.manager = DirectoryManager(musicDir)
 
         self.passed = 0
         self.failed = 0
@@ -40,7 +40,7 @@ class Downloader:
     def prettyPrint(self, albums):
         print("Top Albums")
         for i, album in enumerate(albums):
-            print(f"[{i}] - {album['title']}")
+            print(f"[{i+1}] - {album['title']}")
 
     def cleanDiscography(self, albums):
         targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
@@ -136,7 +136,7 @@ class Downloader:
 
         print("Cleaning output")
 
-        manager.cleanDownloadDir()
+        self.manager.cleanDownloadDir()
 
 
         print("Done!")

@@ -91,7 +91,7 @@ class DirectoryManager:
             if not os.path.isdir(artistPath):
                 continue
 
-            artistManifestPath = os.path.join(ArtistPath, f"{artist}.json")
+            artistManifestPath = os.path.join(artistPath, f"{artist}.json")
             allArtistTracks = []
 
             for album in os.listdir(artistPath):
@@ -146,4 +146,8 @@ class DirectoryManager:
                         except Exception as e:
                             print(f"Failed to save {artistManifestPath}: error: {e}")
 
-
+    def nukeRaw(self, target):
+        if os.path.exists(target):
+            shutil.rmtree(target)
+            os.makedirs(target)
+        print("Raw directory cleaned.")

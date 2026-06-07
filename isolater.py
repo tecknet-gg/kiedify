@@ -307,6 +307,10 @@ class Preprocessor:
 if __name__ == "__main__":
 
     preprocessor = Preprocessor()
-    #preprocessor.generateQueue2()
-    #preprocessor.processMulithreaded(nthread=4)
-    preprocessor.cleanDir()
+    preprocessor.generateQueue2()
+    preprocessor.processMulithreaded(nthread=4)
+
+    manager = DirectoryManager()
+    manager.cleanDownloadDir()
+    manager.cleanIsolatedDir()
+    manager.flattenProcessedDir()

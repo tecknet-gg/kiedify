@@ -5,6 +5,7 @@ from isolater import Preprocessor
 import time
 import os
 
+'''
 if __name__ == "__main__":
     #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
     artists = []
@@ -31,4 +32,9 @@ if __name__ == "__main__":
     processor.processMulithreaded(nthread=4)
     manager = DirectoryManager(musicDir)
     manager.cleanIsolatedDir()
+    manager.flattenProcessedDir()
+'''
+
+if __name__ == "__main__":
+    manager = DirectoryManager()
     manager.flattenProcessedDir()
