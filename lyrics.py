@@ -1,7 +1,7 @@
 import json
 import os
 import threading
-
+from queue import Queue
 import requests
 from mutagen.mp3 import MP3
 
@@ -10,6 +10,7 @@ class LyricFinder:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.musicDir = musicDir
         self.injectDuration()
+        self.lyricsQueue = Queue()
         print("Initialised")
         pass
 
@@ -131,7 +132,16 @@ class LyricFinder:
         pass
 
     def generateQueue(self):
-        recovered = 0
+        dir = os.path.join(self.musicDir, "Processed")
+        for root, dirs, files in os.walk(dir):
+            for file in files:
+                if file.endswith(".json"):
+                    with open(os.path.join(root, file), "r") as f:
+                        tracks = json.load(f)
+                        for track in tracks:
+                            if not track.get("lyricsFound"):
+                                self.lyricsQueue.put((track["title"], track["artist"], track["duration"]))
+
 
 
 
@@ -139,3 +149,4 @@ class LyricFinder:
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
     lyricFinder.injectDuration()
+    lyricFinder.ammendMetadata()
