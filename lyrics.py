@@ -19,6 +19,9 @@ class LyricFinder:
             "User-Agent": "kiedify/v0.1 (https://github.com/tecknet-gg/kiedify; <hattijeevan@gmail.com>)",
         }
 
+        self.length = 0
+        self.processed = 0
+
         print("Initialised")
 
 
@@ -153,7 +156,7 @@ class LyricFinder:
 
     def getLyrics(self):
         while True:
-            time.sleep(2)
+            time.sleep(1)
             try:
                 songName, artist, duration, attempts = self.lyricsQueue.get(timeout=1)
             except Empty:
@@ -281,7 +284,7 @@ class LyricFinder:
                     else:
                         print(f"Synced lyrics not found for {songName}")
 
-                    print("Lyrics saved")
+                    self.processed += 1
                     break
 
         if manifestUpdated:
@@ -289,6 +292,7 @@ class LyricFinder:
                 with open(manifestPath, "w") as f:
                     json.dump(tracks, f, indent=4)
                 print("Manifest succesfully updated")
+                print(f"Processed: {self.processed}/{self.length}")
             except Exception as e:
                 print(f"Failed to save {manifestPath}: error: {e}")
 
@@ -321,7 +325,7 @@ class LyricFinder:
             thread.start()
             threads.append(thread)
 
-
+        time.sleep(2)
         for thread in threads:
             thread.join()
 
@@ -342,6 +346,7 @@ class LyricFinder:
                                 else:
                                     print(f"Missing duration for {track['title']}")
                                     self.lyricsQueue.put((track["title"], track["artist"], None, 0))
+        self.length = self.lyricsQueue.qsize()
 
     def testQueue(self):
         self.generateQueue()
