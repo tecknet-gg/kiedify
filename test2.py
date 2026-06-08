@@ -45,10 +45,13 @@ def main():
 
     print("Done!")
 
-if __name__ == "__main__":
+def helper():
     try:
         main()
     except Exception as e:
         print(f"An error occurred: {e}")
-        print("Tryin' again...")
-        main()
+        print("Trying again...")
+        helper()
+
+if __name__ == "__main__":
+    helper()
