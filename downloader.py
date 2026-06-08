@@ -8,6 +8,7 @@ import threading
 import time
 from isolater import Preprocessor
 from directory import DirectoryManager
+from lyrics import LyricFinder
 
 class Downloader:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -189,8 +190,8 @@ class Downloader:
 
 
 if __name__ == "__main__":
-    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
-    artists = []
+    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+    #artists = []
     if len(artists) == 0:
         artist = input("Enter the artist: ")
         numberAlbums = int(input("Enter the number of albums: "))
@@ -212,6 +213,19 @@ if __name__ == "__main__":
     processor = Preprocessor()
     processor.generateQueue()
     processor.processMulithreaded(nthread=4)
+
     manager = DirectoryManager(musicDir)
     manager.cleanIsolatedDir()
     manager.flattenProcessedDir()
+
+    lyrics = LyricFinder()
+    lyrics.ammendMetadata()
+    lyrics.injectDuration()
+    lyrics.generateQueue()
+    lyrics.gatherMulithreaded(nthread=5)
+    lyrics.cleanLyricless()
+
+    manager.nukeTarget("Raw")
+    manager.nukeTarget("Processed")
+
+print("Done!")

@@ -6,6 +6,8 @@ import requests
 from mutagen.mp3 import MP3
 import time
 from directory import DirectoryManager
+import shutil
+
 
 
 class LyricFinder:
@@ -35,7 +37,6 @@ class LyricFinder:
         clean = clean.replace("&", "and")
         clean = "".join(char for char in clean if char.isalnum())
         return clean
-
 
     def injectDuration(self):
         print("Injecting duration metadata")
@@ -162,7 +163,8 @@ class LyricFinder:
                 songName, artist, duration, attempts = self.lyricsQueue.get(timeout=1)
             except Empty:
                 print("Queue empty, exiting.")
-                return
+
+            return
 
             try:
                 data = self.queryLyric(songName, artist, duration, attempts)
@@ -259,13 +261,15 @@ class LyricFinder:
                     synced = lyricData.get("syncedLyrics")
                     plain = lyricData.get("plainLyrics")
                     trackId = lyricData.get("id")
+                    path = os.path.join(artistPath, f"{songName}.mp3")
 
                     track["lyricsID"] = trackId
                     if synced:
-                        for line in parsed:
-                            track["lyrics"] = parsed
-                            track["lyricsFound"] = True
-                            track["syncedLyrics"] = True
+                        parsed = self.parseSyncedLyrics(synced)
+                        track["lyrics"] = parsed
+                        track["lyricsFound"] = True
+                        track["syncedLyrics"] = True
+                        track["lyricsPath"] = path
 
                     elif plain:
                         track["lyrics"] = [{
@@ -273,6 +277,7 @@ class LyricFinder:
                         }]
                         track["lyricsFound"] = True
                         track["syncedLyrics"] = False
+                        track["lyricsPath"] = path
 
                     else:
                         print(f"No lyrics found for {songName}")
@@ -329,7 +334,6 @@ class LyricFinder:
             thread.start()
             threads.append(thread)
 
-        time.sleep(2)
         for thread in threads:
             thread.join()
 
@@ -410,12 +414,16 @@ class LyricFinder:
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
     manager = DirectoryManager("/Users/jeevan/Documents/Python/MusicTTS/Music")
-    '''
+    downloader = Downloader()
+    preprocessor = Preprocessor()
+
+
+
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
     lyricFinder.generateQueue()
     lyricFinder.gatherMulithreaded(nthread=5)
-    '''
+
     lyricFinder.cleanLyricless()
     manager.nukeTarget("Raw")
     manager.nukeTarget("Isolated")
