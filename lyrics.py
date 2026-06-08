@@ -361,6 +361,48 @@ class LyricFinder:
             except KeyError:
                 print("Missing data, skipping.")
 
+    def cleanLyricless(self):
+        dir = os.path.join(self.musicDir, "Processed")
+
+        if not os.path.exists(dir):
+            print("Directory missing")
+            return
+
+        for root, dirs, files in os.walk(dir):
+            for file in files:
+                if not file.endswith(".json"):
+                    continue
+
+                manifestPath = os.path.join(root, file)
+                try:
+                    with open(manifestPath, "r") as f:
+                        tracks = json.load(f)
+                except Exception as e:
+                    print(f"Failed to load {manifestPath}: error: {e}")
+
+                delete = []
+                clean = []
+                for track in tracks:
+                    if not track.get("lyricsFound") or not track.get("syncedLyrics"):
+                        delete.append(track["title"])
+                        print(f"Deleting {track['title']} for not having lyrics/sycned lyrics")
+                        continue
+                    else:
+                        clean.append(track)
+
+                try:
+                    with open(manifestPath, "w") as f:
+                        json.dump(clean, f, indent=4)
+                    print("Manifest succesfully updated")
+                except Exception as e:
+                    print(f"Failed to save {manifestPath}: error: {e}")
+
+                for track in delete:
+                    try:
+                        os.remove(os.path.join(root, f"{track}.mp3"))
+                        print(f"Deleted {track}.mp3")
+                    except Exception as e:
+                        print(f"Failed to delete {track}.mp3: {e}")
 
 
 
@@ -369,7 +411,10 @@ class LyricFinder:
 
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
+    '''
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
     lyricFinder.generateQueue()
     lyricFinder.gatherMulithreaded(nthread=5)
+    '''
+    lyricFinder.cleanLyricless()
