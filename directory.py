@@ -146,8 +146,15 @@ class DirectoryManager:
                         except Exception as e:
                             print(f"Failed to save {artistManifestPath}: error: {e}")
 
-    def nukeRaw(self, target):
+    def nukeTarget(self, target):
+        target = os.path.join(self.dir, target)
         if os.path.exists(target):
-            shutil.rmtree(target)
-            os.makedirs(target)
-        print("Raw directory cleaned.")
+            try:
+                shutil.rmtree(target)
+                os.makedirs(target)
+                print(f"{target} cleaned.")
+            except Exception as e:
+                print(f"Failed to clean {target}: {e}")
+        else:
+            return False
+

@@ -5,6 +5,7 @@ from queue import Queue, Empty
 import requests
 from mutagen.mp3 import MP3
 import time
+from directory import DirectoryManager
 
 
 class LyricFinder:
@@ -406,11 +407,9 @@ class LyricFinder:
 
 
 
-
-
-
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
+    manager = DirectoryManager("/Users/jeevan/Documents/Python/MusicTTS/Music")
     '''
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
@@ -418,3 +417,5 @@ if __name__ == "__main__":
     lyricFinder.gatherMulithreaded(nthread=5)
     '''
     lyricFinder.cleanLyricless()
+    manager.nukeTarget("Raw")
+    manager.nukeTarget("Isolated")
