@@ -71,6 +71,18 @@ def lyrics():
 
 
 if __name__ == "__main__":
-    helper()
+    #helper()
     #lyrics()
 
+    musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
+
+    manager = DirectoryManager(musicDir)
+    manager.cleanIsolatedDir()
+    manager.flattenProcessedDir()
+
+    lyrics = LyricFinder()
+    lyrics.ammendMetadata()
+    lyrics.injectDuration()
+    lyrics.generateQueue()
+    lyrics.gatherMulithreaded(nthread=5)
+    lyrics.cleanLyricless()

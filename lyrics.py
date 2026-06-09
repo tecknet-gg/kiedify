@@ -181,7 +181,6 @@ class LyricFinder:
                 print(f"Retrying {songName} - attempt {attempts} of 5.")
             finally:
                 self.lyricsQueue.task_done()
-                return
 
 
 
