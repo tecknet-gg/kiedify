@@ -5,8 +5,9 @@ from isolater import Preprocessor
 from lyrics import LyricFinder
 
 def main():
-    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey"]
-    # artists = []
+    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "The Cardigans"]
+    artists = []
+    musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
     if len(artists) == 0:
         artist = input("Enter the artist: ")
         numberAlbums = int(input("Enter the number of albums: "))
@@ -39,8 +40,6 @@ def main():
     lyrics.gatherMulithreaded(nthread=5)
     lyrics.cleanLyricless()
 
-    manager.nukeTarget("Raw")
-    manager.nukeTarget("Processed")
 
 
     print("Done!")
@@ -50,8 +49,28 @@ def helper():
         main()
     except Exception as e:
         print(f"An error occurred: {e}")
+        print(f"Sleeping then trying again...")
+        time.sleep(60)
         print("Trying again...")
         helper()
 
+
+def lyrics():
+    musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
+    manager = DirectoryManager(musicDir)
+    manager.cleanIsolatedDir()
+    manager.flattenProcessedDir()
+
+    lyrics = LyricFinder()
+    lyrics.ammendMetadata()
+    lyrics.injectDuration()
+    lyrics.generateQueue()
+    lyrics.gatherMulithreaded(nthread=5)
+
+    manager.nukeTarget("Raw")
+
+
 if __name__ == "__main__":
     helper()
+    #lyrics()
+

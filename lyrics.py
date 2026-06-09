@@ -163,8 +163,7 @@ class LyricFinder:
                 songName, artist, duration, attempts = self.lyricsQueue.get(timeout=1)
             except Empty:
                 print("Queue empty, exiting.")
-
-            return
+                return
 
             try:
                 data = self.queryLyric(songName, artist, duration, attempts)
@@ -182,6 +181,8 @@ class LyricFinder:
                 print(f"Retrying {songName} - attempt {attempts} of 5.")
             finally:
                 self.lyricsQueue.task_done()
+                return
+
 
 
     def parseSyncedLyrics(self, lyrics):
