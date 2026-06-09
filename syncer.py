@@ -8,13 +8,11 @@ class Syncer:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelSize = "base", device = "cpu", computeType = "int16"):
 
         self.musicDir = musicDir
-
-        self.modelSize = modelSize
         self.device = device
         self.computeType = computeType
 
-        self.model = whisperx.load_model(self.modelSize, device=self.device, compute_type=self.computeType)
-        print(f"Loaded model: {self.modelSize} on {self.device} with compute type: {self.computeType}")
+        self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device, compute_type=computeType)
+        print(f"Loaded mode on {self.device} with compute type: {self.computeType}")
 
     def syncAll(self):
         processedDir = os.path.join(self.musicDir, "Processed")
@@ -52,13 +50,19 @@ class Syncer:
 
         for track in oldTracks:
             title = track.get("title")
-            audioPath = track.get("lyricsPath")
-            if not audioPath or not os.path.exists(audioPath):
-                print(f"Audio file missing for {title} by {artistName}")
+
+            lyrics = track.get("lyrics")
+            if not lyrics or not track.get("lyricsPath"):
+                print(f"Skipping {title}, no lyrics found")
                 continue
 
-            print("Generating word alignment")
-            wordTimestamps = self.generateWordTimestamps(audioPath)
+            audio = track.get("lyricsPath")
+            if not audio or not os.path.exists(audio):
+                print(f"Skipping {title}, no audio found")
+                continue
+
+            print(f"Aliging lyrics for {title}")
+            wordTimestamps = self.generateWordTimestamps(audio, lyrics)
 
             syncedData = {
                 "title": title,
@@ -67,18 +71,62 @@ class Syncer:
                 "id": track.get("id"),
                 "duration": track.get("duration"),
                 "lyricsID": track.get("lyricsID"),
-                "audioPath": audioPath,
+                "audioPath": audio,
                 "words": wordTimestamps,
             }
+
             newManifest.append(syncedData)
 
-            newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
+            newManifestPath = os.path.join(artistPath, f"{title}Synced.json")
             try:
                 with open(newManifestPath, "w") as f:
-                    json.dump(newManifest, f, indent=4)
-                print(f"Synced manifest saved to {newManifestPath}")
+                    json.dump(syncedData, f, indent=4)
+                print(f"Synced manifest saved for {title}")
             except Exception as e:
-                print(f"Failed to save synced manifest for {artistName}: {e}")
+                print(f"Failed to save synced manifest for {title}: {e}")
 
-    def generateWordTimestamps(self, audioPath):
-        pass
+        def generateWordTimestamps(audioPath, lyrics):
+            words = []
+            try:
+                segments = []
+                for line in lyrics:
+                    if "text" in line and "start" in line and "end" in line:
+                        segments.append({
+                            "text": line["text"],
+                            "start": line["start"],
+                            "end": line["end"],
+                        })
+
+                if not segments:
+                    print(f"No segments found in lyrics for {title}")
+                    return
+
+                audio = whisperx.load_audio(audioPath)
+
+                alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device) #char alignments maybe?
+
+                for segment in alignedResults:
+                    if "words" not in segment:
+                        continue
+
+                    for word in segment["words"]:
+                        if "start" in w and "end" in word:
+                            words.append({
+                                "word": word["word"],
+                                "start": round(float(word["start"],2)),
+                                "end": round(float(word["end"]),2)
+                            })
+
+            except Exception as e:
+                print(f"Failed to generate word timestamps for {title}: {e}")
+                return []
+
+            return words
+
+
+
+
+
+
+
+
