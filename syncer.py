@@ -34,16 +34,51 @@ class Syncer:
                 continue
 
             print(f"Syncing {artist}")
-            self.processArtist(artist)
+            self.processArtist(artist, artistPath, oldManifest)
 
         print("Syncing finished")
 
 
 
+    def processArtist(self, artistName, artistPath, oldManifest):
+        try:
+            with open(oldManifest, "r") as f:
+                oldTracks = json.load(f)
+        except Exception as e:
+            print(f"Failed to load manifest for {artistName}: {e}")
+            return
 
+        newManifest = []
 
+        for track in oldTracks:
+            title = track.get("title")
+            audioPath = track.get("lyricsPath")
+            if not audioPath or not os.path.exists(audioPath):
+                print(f"Audio file missing for {title} by {artistName}")
+                continue
 
+            print("Generating word alignment")
+            wordTimestamps = self.generateWordTimestamps(audioPath)
 
-    def generateSync(self, lyrics, audio):
+            syncedData = {
+                "title": title,
+                "artist": artistName,
+                "album": track.get("album"),
+                "id": track.get("id"),
+                "duration": track.get("duration"),
+                "lyricsID": track.get("lyricsID"),
+                "audioPath": audioPath,
+                "words": wordTimestamps,
+            }
+            newManifest.append(syncedData)
+
+            newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
+            try:
+                with open(newManifestPath, "w") as f:
+                    json.dump(newManifest, f, indent=4)
+                print(f"Synced manifest saved to {newManifestPath}")
+            except Exception as e:
+                print(f"Failed to save synced manifest for {artistName}: {e}")
+
+    def generateWordTimestamps(self, audioPath):
         pass
-
