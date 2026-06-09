@@ -166,23 +166,29 @@ class LyricFinder:
                 return
 
             try:
+                print(f"Querying lyric server for {songName} by {artist}")
+                print(f"songName: {songName}, artist: {artist}, duration: {duration}, attempts: {attempts}")
                 data = self.queryLyric(songName, artist, duration, attempts)
                 if data:
+                    print(f"Lyrics found for {songName}")
                     self.saveToJson(artist, songName, data)
                 else:
                     print(f"No lyrics found for {songName}")
+
+                self.lyricsQueue.task_done()
+
+
             except Exception as e:
                 print(f"Failed to query lyric server: {e}")
                 attempts += 1
 
                 if attempts > 4:
+                    print(f"Failed to query lyric server for {songName} by {artist} after 5 attempts.")
                     continue
-                self.lyricsQueue.put((songName, artist, duration, attempts))
+
                 print(f"Retrying {songName} - attempt {attempts} of 5.")
-            finally:
+                self.lyricsQueue.put((songName, artist, duration, attempts))
                 self.lyricsQueue.task_done()
-
-
 
     def parseSyncedLyrics(self, lyrics):
         parsedLyrics = []
@@ -299,9 +305,8 @@ class LyricFinder:
                     with open(manifestPath, "w") as f:
                         json.dump(tracks, f, indent=4)
                     print("Manifest succesfully updated")
-                    with self.lock:
-                        self.processed += 1
-                        print(f"Processed: {self.processed}/{self.length}")
+                    self.processed += 1
+                    print(f"Processed: {self.processed}/{self.length}")
                 except Exception as e:
                     print(f"Failed to save {manifestPath}: error: {e}")
 
