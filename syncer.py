@@ -77,7 +77,7 @@ class Syncer:
             newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
             try:
                 with open(newManifestPath, "w") as f:
-                    json.dump(syncedData, f, indent=4)
+                    json.dump(newManifest, f, indent=4)
                 print(f"Synced manifest saved for {title}")
             except Exception as e:
                 print(f"Failed to save synced manifest for {title}: {e}")
