@@ -10,7 +10,7 @@ class Syncer:
         self.musicDir = musicDir
         self.device = device
         self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device)
-        print(f"Loaded mode on {self.device} with compute type: {self.computeType}")
+        print(f"Loaded mode on {self.device}")
 
     def syncAll(self):
         processedDir = os.path.join(self.musicDir, "Processed2")
@@ -74,8 +74,7 @@ class Syncer:
             }
 
             newManifest.append(syncedData)
-
-            newManifestPath = os.path.join(artistPath, f"{title}Synced.json")
+            newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
             try:
                 with open(newManifestPath, "w") as f:
                     json.dump(syncedData, f, indent=4)
@@ -101,8 +100,7 @@ class Syncer:
 
             audio = whisperx.load_audio(audioPath)
 
-            alignedResults = whisperx.align(segments, self.align, self.metadata, audio,
-                                            self.device)  # char alignments maybe?
+            alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
 
             for segment in alignedResults:
                 if "words" not in segment:
@@ -119,7 +117,7 @@ class Syncer:
         except Exception as e:
             print(f"Failed to generate word timestamps for {title}: {e}")
             return []
-
+        print(words)
         return words
 
 if __name__ == "__main__":
