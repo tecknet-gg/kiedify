@@ -5,8 +5,8 @@ from isolater import Preprocessor
 from lyrics import LyricFinder
 
 def main():
-    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "The Cardigans"]
-    artists = []
+    artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "The Cardigans"]
+    #artists = []
     musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
     if len(artists) == 0:
         artist = input("Enter the artist: ")
@@ -18,7 +18,7 @@ def main():
     else:
         timeStart = time.perf_counter()
         downloader = Downloader()
-        passed, failed = downloader.queueArtists(artists, qty=10, nthreads=25)
+        passed, failed = downloader.queueArtists(artists, qty=15, nthreads=25)
         timeEnd = time.perf_counter()
 
     print(f"Download time: {round(timeEnd - timeStart, 2)} Successful: {passed} Failed: {failed}")
@@ -71,9 +71,24 @@ def lyrics():
 
 
 if __name__ == "__main__":
-    #helper()
+
+    timeStart = time.perf_counter()
+    actualTimeStart = time.ctime()
+
+    helper()
+
+    timeEnd = time.perf_counter()
+    actualTimeStop = time.ctime()
+    elapsedTime = timeEnd - timeStart
+
+    print(f"Total time: {elapsedTime} seconds")
+    print(f"Start time: {actualTimeStart}")
+    print(f"End time: {actualTimeStop}")
+
+
     #lyrics()
 
+    '''
     musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"
 
     manager = DirectoryManager(musicDir)
@@ -86,3 +101,4 @@ if __name__ == "__main__":
     lyrics.generateQueue()
     lyrics.gatherMulithreaded(nthread=5)
     lyrics.cleanLyricless()
+    '''

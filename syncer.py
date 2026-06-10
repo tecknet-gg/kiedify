@@ -9,13 +9,11 @@ class Syncer:
 
         self.musicDir = musicDir
         self.device = device
-        self.computeType = computeType
-
-        self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device, compute_type=computeType)
+        self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device)
         print(f"Loaded mode on {self.device} with compute type: {self.computeType}")
 
     def syncAll(self):
-        processedDir = os.path.join(self.musicDir, "Processed")
+        processedDir = os.path.join(self.musicDir, "Processed2")
 
         if not os.path.exists(processedDir):
             print("Directory missing")
@@ -85,43 +83,48 @@ class Syncer:
             except Exception as e:
                 print(f"Failed to save synced manifest for {title}: {e}")
 
-        def generateWordTimestamps(audioPath, lyrics):
-            words = []
-            try:
-                segments = []
-                for line in lyrics:
-                    if "text" in line and "start" in line and "end" in line:
-                        segments.append({
-                            "text": line["text"],
-                            "start": line["start"],
-                            "end": line["end"],
+    def generateWordTimestamps(self, audioPath, lyrics):
+        words = []
+        try:
+            segments = []
+            for line in lyrics:
+                if "text" in line and "start" in line and "end" in line:
+                    segments.append({
+                        "text": line["text"],
+                        "start": line["start"],
+                        "end": line["end"],
+                    })
+
+            if not segments:
+                print(f"No segments found in lyrics for {title}")
+                return
+
+            audio = whisperx.load_audio(audioPath)
+
+            alignedResults = whisperx.align(segments, self.align, self.metadata, audio,
+                                            self.device)  # char alignments maybe?
+
+            for segment in alignedResults:
+                if "words" not in segment:
+                    continue
+
+                for word in segment["words"]:
+                    if "start" in w and "end" in word:
+                        words.append({
+                            "word": word["word"],
+                            "start": round(float(word["start"], 2)),
+                            "end": round(float(word["end"]), 2)
                         })
 
-                if not segments:
-                    print(f"No segments found in lyrics for {title}")
-                    return
+        except Exception as e:
+            print(f"Failed to generate word timestamps for {title}: {e}")
+            return []
 
-                audio = whisperx.load_audio(audioPath)
+        return words
 
-                alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device) #char alignments maybe?
-
-                for segment in alignedResults:
-                    if "words" not in segment:
-                        continue
-
-                    for word in segment["words"]:
-                        if "start" in w and "end" in word:
-                            words.append({
-                                "word": word["word"],
-                                "start": round(float(word["start"],2)),
-                                "end": round(float(word["end"]),2)
-                            })
-
-            except Exception as e:
-                print(f"Failed to generate word timestamps for {title}: {e}")
-                return []
-
-            return words
+if __name__ == "__main__":
+    syncer = Syncer()
+    syncer.syncAll()
 
 
 
