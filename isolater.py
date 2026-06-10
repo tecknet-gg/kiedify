@@ -6,6 +6,8 @@ import time
 import os
 import json
 import shutil
+from concurrent.futures import ThreadPoolExecutor
+
 from directory import DirectoryManager
 
 class Preprocessor:
@@ -29,14 +31,12 @@ class Preprocessor:
 
         return timeElapsed
 
-    def generateQueue(self):
-        recovered = 0
-
-        for root, dirs, files in os.walk(self.rawDir):
+    def gatherTracks(self):
+        tracksToProcess = []
+        for root, dirs, files in os.walk(self.dir):
             for file in files:
                 if file.endswith(".json"):
                     jsonPath = os.path.join(root, file)
-
                     try:
                         with open(jsonPath, "r") as f:
                             tracks = json.load(f)
@@ -45,118 +45,93 @@ class Preprocessor:
                         continue
 
                     for track in tracks:
-                        title = track["title"]
-                        artist = track["artist"]
-                        album = track["album"]
-
                         albumDir = os.path.dirname(jsonPath)
-                        mp3Path = os.path.join(albumDir, f"{title}.mp3")
+                        audio = os.path.join(albumDir, f"{track['title']}.mp3")
 
-                        if os.path.exists(mp3Path):
-                            self.processQueue.put((mp3Path, title, artist, album))
-                            recovered += 1
-                        else:
-                            print(f"Missing file for {title}")
+                        if os.path.exists(audio):
+                            tracksToProcess.append((audio, track["title"], track["artist"], track["album"]))
 
-        print(f"Added: {recovered}")
+        return tracksToProcess
 
-    def process(self):
-        while True:
+    def processTrack(self, trackData):
+        filePath, songName, artist, album = trackData
+        elapsedTime = 0
 
-            try:
-                filePath, songName, artist, album = self.processQueue.get(timeout=1)
-            except queue.Empty:
-                return
+        try:
+            target = os.path.join(self.dir, "Isolated", artist)
+            os.makedirs(target, exist_ok=True)
 
-            elapsedTime = 0
+            print(f"Processing: {songName}")
+            elapsedTime = self.separateTrack(filePath, target)
 
-            try:
-                isolationTargetDir = os.path.join(self.dir, "Isolated", artist)
-                os.makedirs(isolationTargetDir, exist_ok=True)
+            rawFolder = os.path.splitext(os.path.basename(filePath))[0]
+            demucsOutputDir = os.path.join(target, "htdemucs", rawFolder)
 
-                print(f"Processing: {songName}")
-                elapsedTime = self.separateTrack(filePath, isolationTargetDir)
+            finalOutputDir = os.path.join(self.dir, "Processed", artist, album)
+            os.makedirs(finalOutputDir, exist_ok=True)
 
-                rawFolderName = os.path.splitext(os.path.basename(filePath))[0]
-                demucsOutputDir = os.path.join(isolationTargetDir, "htdemucs", rawFolderName)
+            sourceJson = os.path.join(os.path.dirname(filePath), f"{album}.json")
+            destJson = os.path.join(finalOutputDir, f"{album}.json")
 
-                finalOutputDir = os.path.join(self.dir, "Processed", artist, album)
-                os.makedirs(finalOutputDir, exist_ok=True)
+            vocalStem = os.path.join(demucsOutputDir, f"vocals.mp3")
 
-                sourceJson = os.path.join(os.path.dirname(filePath), f"{album}.json")
-                destJson = os.path.join(finalOutputDir, f"{album}.json")
+            if os.path.exists(vocalStem):
+                destination = os.path.join(finalOutputDir, f"{songName}.mp3")
+                shutil.move(vocalStem, destination)
+                print(f"Moving {songName}.mp3 to {destination}")
 
+                if os.path.exists(sourcJson):
+                    try:
+                        with self.manifestLock:
+                            with open(sourceJson, "r") as f:
+                                originalTracks = json.load(f)
 
-                vocalStem = os.path.join(demucsOutputDir, f"vocals.mp3")
+                            currentTrack = next((Track for track in originalTracks if track["title"] == songName), None)
 
-                if os.path.exists(vocalStem):
-                    destination = os.path.join(finalOutputDir, f"{songName}.mp3")
-                    shutil.move(vocalStem, destination)
-                    print(f"Moved {songName}.mp3 to {destination}")
-
-                    if os.path.exists(sourceJson):
-                        try:
-                            with self.manifestLock:
-                                with open(sourceJson, "r") as f:
-                                    originalTracks = json.load(f)
-                                currentTracks = next((t for t in originalTracks if t['title'] == songName), None)
-
-                                if currentTracks:
-                                    processedTracks = []
-
+                            if currentTrack:
+                                processedTracks = []
                                 if os.path.exists(destJson):
-                                    try:
-                                        with open(destJson, "r") as f:
-                                            processedTracks = json.load(f)
+                                    with open(destJson, "r") as f:
+                                        processedTracks = json.load(f)
 
-                                    except Exception as e:
-                                        print(f"Failed to load {destJson}: error: {e}")
-                                        return
-
-                                if currentTracks not in processedTracks:
-                                    processedTracks.append(currentTracks)
+                                if currentTrack not in processedTracks:
+                                    processedTracks.append(currentTrack)
 
                                 with open(destJson, "w") as f:
                                     json.dump(processedTracks, f, indent=4)
 
-                        except Exception as e:
+                            else:
+                                print(f"Missing track in {sourceJson}: {songName}")
+
+                    except Exception as e:
                             print(f"Failed to save {destJson}: error: {e}")
 
-                        try:
-                            os.remove(filePath)
-                        except Exception as e:
-                            print(f"Failed to remove {filePath}: {e}")
+        except Exception as e:
+            print(f"Missing vocals")
 
-                else:
-                    print(f"Missing file for {songName}")
+    def processAll(self, max=2):
+        tracks = self.gatherTracks()
+        print(f"Processing {len(tracks)} tracks")
 
-            except Exception as e:
-                print(f"Failed to process {songName}: {e}")
+        if not tracks:
+            return
 
+        with ThreadPoolExecutor(max_workers=max) as executor:
+            futures = {executor.submit(self.processTrack, track): track[1] for track in tracks}
 
-            print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
-
-            self.processQueue.task_done()
-
-    def processMulithreaded(self, nthread=1):
-        threads = []
-        for i in range(nthread):
-            thread = threading.Thread(target=self.process)
-            thread.start()
-            threads.append(thread)
-
-        for thread in threads:
-            thread.join()
-
-        return True
+            for future in as_completed(futures):
+                songName = futures[future]
+                try:
+                    data = future.result()
+                except Exception as exc:
+                    print(f"Failed to process {songName}: {exc}")
 
 
 
 if __name__ == "__main__":
 
     preprocessor = Preprocessor()
-    preprocessor.generateQueue()
-    preprocessor.processMulithreaded(nthread=4)
+    preprocessor.processAll()
 
     manager = DirectoryManager()
     manager.cleanDownloadDir()
