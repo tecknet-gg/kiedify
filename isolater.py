@@ -16,7 +16,7 @@ class Preprocessor:
         self.dir = dir
         self.rawDir = os.path.join(dir,"Raw")
         self.targetDir = os.path.join(dir, "Isolated")
-        self.manager = DirectoryManager(dir)
+        self.manager = DirectoryManager(self.dir)
 
         self.manifestLock = threading.Lock()
 
@@ -33,7 +33,7 @@ class Preprocessor:
 
     def gatherTracks(self):
         tracksToProcess = []
-        for root, dirs, files in os.walk(self.dir):
+        for root, dirs, files in os.walk(self.rawDir):
             for file in files:
                 if file.endswith(".json"):
                     jsonPath = os.path.join(root, file)
@@ -80,13 +80,13 @@ class Preprocessor:
                 shutil.move(vocalStem, destination)
                 print(f"Moving {songName}.mp3 to {destination}")
 
-                if os.path.exists(sourcJson):
+                if os.path.exists(sourceJson):
                     try:
                         with self.manifestLock:
                             with open(sourceJson, "r") as f:
                                 originalTracks = json.load(f)
 
-                            currentTrack = next((Track for track in originalTracks if track["title"] == songName), None)
+                            currentTrack = next((track for track in originalTracks if track["title"] == songName), None)
 
                             if currentTrack:
                                 processedTracks = []
@@ -105,6 +105,12 @@ class Preprocessor:
 
                     except Exception as e:
                             print(f"Failed to save {destJson}: error: {e}")
+
+                try:
+                    os.remove(filePath)
+                    print(f"Removed {filePath}")
+                except Exception as e:
+                    print(f"Failed to remove {filePath}: {e}")
 
         except Exception as e:
             print(f"Missing vocals")
@@ -133,7 +139,7 @@ if __name__ == "__main__":
     preprocessor = Preprocessor()
     preprocessor.processAll()
 
-    manager = DirectoryManager()
+    manager = DirectoryManager(musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music")
     manager.cleanDownloadDir()
     manager.cleanIsolatedDir()
     manager.flattenProcessedDir()
