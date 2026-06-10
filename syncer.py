@@ -101,16 +101,16 @@ class Syncer:
             audio = whisperx.load_audio(audioPath)
 
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
-
-            for segment in alignedResults:
+            title = alignedResults.get("title", "")
+            for segment in alignedResults.get("segments", []):
                 if "words" not in segment:
                     continue
 
                 for word in segment["words"]:
-                    if "start" in w and "end" in word:
+                    if "start" in word and "end" in word:
                         words.append({
                             "word": word["word"],
-                            "start": round(float(word["start"], 2)),
+                            "start": round(float(word["start"]), 2),
                             "end": round(float(word["end"]), 2)
                         })
 
