@@ -1,7 +1,10 @@
 import json
 import os
+from asyncio import as_completed
+
 import torch
 import whisperx
+import concurrent.futures
 
 
 class Syncer:
@@ -34,7 +37,46 @@ class Syncer:
 
         print("Syncing finished")
 
+    def syncAll2(self):
+        processedDir = os.path.join(self.musicDir, "Processed2")
 
+        if not os.path.exists(processedDir):
+            print("Directory missing")
+            return
+
+        tasks = []
+        for artist in os.listdir(processedDir):
+            artistPath = os.path.join(processedDir, artist)
+            if not os.path.isdir(artistPath):
+                continue
+
+            oldManifest = os.path.join(artistPath, f"{artist}.json")
+            if not os.path.exists(oldManifest):
+                print(f"Manifest missing for {artist}")
+                continue
+
+            tasks.append((artist, artistPath, oldManifest))
+
+        if not tasks:
+            print("No artists to sync")
+            return
+
+        print(f"Starting sync for {len(tasks)} artists")
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {
+                executor.submit(self.processArtist, artist, artistPath, oldManifest): artist for artist, artistPath, oldManifest in tasks
+            }
+
+        for futures in as_completed(futures):
+            artist = futures.result()
+            try:
+                future.result()
+                print(f"Synced {artist}")
+            except Exception as e:
+                print(f"Failed to sync {artist}: {e}")
+
+        print("Syncing finished")
 
     def processArtist(self, artistName, artistPath, oldManifest):
         try:
@@ -95,11 +137,10 @@ class Syncer:
                     })
 
             if not segments:
-                print(f"No segments found in lyrics for {title}")
+                print(f"No segments found in lyrics data: {audioPath}")
                 return
 
             audio = whisperx.load_audio(audioPath)
-
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
             title = alignedResults.get("title", "")
             for segment in alignedResults.get("segments", []):
@@ -115,14 +156,16 @@ class Syncer:
                         })
 
         except Exception as e:
-            print(f"Failed to generate word timestamps for {title}: {e}")
+            print(f"Failed to generate word timestamps: {e} for {audioPath}")
             return []
         print(words)
         return words
 
+
+
 if __name__ == "__main__":
     syncer = Syncer()
-    syncer.syncAll()
+    syncer.syncAll2()
 
 
 

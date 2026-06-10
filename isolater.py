@@ -111,6 +111,7 @@ class Preprocessor:
 
                                     except Exception as e:
                                         print(f"Failed to load {destJson}: error: {e}")
+                                        return
 
                                 if currentTracks not in processedTracks:
                                     processedTracks.append(currentTracks)
@@ -121,6 +122,11 @@ class Preprocessor:
                         except Exception as e:
                             print(f"Failed to save {destJson}: error: {e}")
 
+                        try:
+                            os.remove(filePath)
+                        except Exception as e:
+                            print(f"Failed to remove {filePath}: {e}")
+
                 else:
                     print(f"Missing file for {songName}")
 
@@ -129,9 +135,10 @@ class Preprocessor:
 
 
             print(f"Finished processing {songName} in {round(elapsedTime, 2)} seconds")
+
             self.processQueue.task_done()
 
-    def processMulithreaded(self, nthread=4):
+    def processMulithreaded(self, nthread=1):
         threads = []
         for i in range(nthread):
             thread = threading.Thread(target=self.process)
