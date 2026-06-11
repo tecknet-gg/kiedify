@@ -6,7 +6,7 @@ Currently working on:
 - [x] Music Downloader
 - [x] Vocal Isolator
 - [x] Lyric Sourcing
-- [ ] Word Level Syncing
+- [x] Word Level Syncing
 - [ ] Phoneme Level Syncing
 - [ ] Greedy Maxmial Matching Algorithm for Words
 - [ ] Phoneme Level Matching Algorithm
