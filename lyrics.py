@@ -27,7 +27,6 @@ class LyricFinder:
 
         print("Initialised")
 
-
     def cleanString(self, text):
         if not text:
             return ""
@@ -166,7 +165,7 @@ class LyricFinder:
                 return
 
             try:
-                print(f"Querying lyric server for {songName} by {artist}")
+                print(f"Querying LRC lib for {songName} by {artist}")
                 print(f"songName: {songName}, artist: {artist}, duration: {duration}, attempts: {attempts}")
                 data = self.queryLyric(songName, artist, duration, attempts)
                 if data:
@@ -242,7 +241,6 @@ class LyricFinder:
 
         return final
 
-
     def saveToJson(self, artist, songName, lyricData):
         artistPath = os.path.join(self.musicDir, "Processed", artist)
         manifestPath = os.path.join(artistPath, f"{artist}.json")
@@ -310,7 +308,6 @@ class LyricFinder:
                 except Exception as e:
                     print(f"Failed to save {manifestPath}: error: {e}")
 
-
     def queryLyric(self, songName, artist, duration, attempts):
         payload = {
             "track_name": songName,
@@ -321,16 +318,15 @@ class LyricFinder:
             payload["duration"] = (int(duration))
 
         response = requests.get(self.URL, headers=self.headers, params=payload)
+        response.raise_for_status()
 
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, list) and len(data) > 0:
-                return data[0]
-            else:
-                return None
-        else:
-            print(f"Failed to query lyric server: {response.status_code}")
-            return None
+        data = response.json()
+        if isinstance(data, list) and len(data) > 0:
+            return data[0]
+
+        return None
+
+
 
     def gatherMulithreaded(self, nthread=15):
         threads = []
@@ -360,16 +356,6 @@ class LyricFinder:
                                     print(f"Missing duration for {track['title']}")
                                     self.lyricsQueue.put((track["title"], track["artist"], None, 0))
         self.length = self.lyricsQueue.qsize()
-
-    def testQueue(self):
-        self.generateQueue()
-        while not self.lyricsQueue.empty():
-            try:
-                item = self.lyricsQueue.get()
-                print(item)
-                self.lyricsQueue.task_done()
-            except KeyError:
-                print("Missing data, skipping.")
 
     def cleanLyricless(self):
         dir = os.path.join(self.musicDir, "Processed")
@@ -419,10 +405,6 @@ class LyricFinder:
 if __name__ == "__main__":
     lyricFinder = LyricFinder()
     manager = DirectoryManager("/Users/jeevan/Documents/Python/MusicTTS/Music")
-    downloader = Downloader()
-    preprocessor = Preprocessor()
-
-
 
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
