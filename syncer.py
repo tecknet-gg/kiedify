@@ -17,7 +17,7 @@ class Syncer:
 
 
     def syncAll(self):
-        processedDir = os.path.join(self.musicDir, "Processed")
+        processedDir = os.path.join(self.musicDir, "Processed2")
 
         if not os.path.exists(processedDir):
             print("Directory missing")
