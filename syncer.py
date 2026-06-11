@@ -1,10 +1,8 @@
 import json
 import os
-from asyncio import as_completed
-
 import torch
 import whisperx
-from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 
 
 class Syncer:
@@ -48,7 +46,7 @@ class Syncer:
             }
 
         for futures in as_completed(futures):
-            artist = futures.result()
+            artist = futures[future]
             try:
                 future.result()
                 print(f"Synced {artist}")

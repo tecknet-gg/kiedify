@@ -3,6 +3,7 @@ import json
 import re
 
 
+
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
@@ -12,45 +13,49 @@ class Searcher:
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
 
 
-    def findLCS(self, query, song):
+    def findLCS(self, query, tracks):
 
         maxMatch = 0
-        bestStart = -1
-        bestEnd = -1
+        bestData = None
 
-        songWords = [self.normalise(word["word"]) for word in song] #normalise across song and query
-        queryWords = [self.normalise(word["word"]) for word in query]
+        queryWords = [self.normaliseWord(word) for word in query] #normalise words in query
 
-        songIndex = 0
+        for track in tracks:
+            song = track.get("words", [])
 
-        while songIndex < len(songWords):
-            if songWords[songIndex] == queryWords[0]:
-                matchCount = 0
-                currentS = songIndex
-                currentQ = 0
+            songWords = [self.normaliseWord(word["word"]) for word in song]
+            songIndex = 0
 
-                while (currentS < len(songWords) and currentQ < len(queryWords) and songWords[currentS] == queryWords[currentQ]):
-                    matchCount += 1
-                    currentS += 1
-                    currentQ += 1
 
-                if matchCount > maxMatch:
-                    maxMatch = matchCount
-                    bestStart = songIndex
-                    bestEnd = currentS - 1
+            while songIndex < len(songWords):
+                if songWords[songIndex] == queryWords[0]:
+                    matchCount = 0
+                    currentSong = songIndex
+                    currentQuery = 0
 
-                songIndex = currentS if matchCount > 1 else songIndex + 1
+                    while (currentSong < len(songWords) and currentQuery < len(queryWords) and songWords[currentSong] == queryWords[currentQuery]):
+                        matchCount += 1
+                        currentSong += 1
+                        currentQuery += 1
 
-            else:
-                songIndex += 1
+                    if matchCount > maxMatch:
+                        maxMatch = matchCount
+                        bestData = {
+                            "title": track.get("title"),
+                            "audioPath": track.get("audioPath"),
+                            "startTime": song[songIndex].get("start"),
+                            "endTime": song[currentSong-1].get("end")
+                        }
+
+                    songIndex = currentSong if matchCount > 1 else songIndex + 1
+
+                else:
+                    songIndex += 1
 
         if maxMatch == 0:
-            return 0, None, None
+            return 0, None
 
-        startTime = songWords[bestStart].get("start")
-        endTime = songWords[bestEnd].get("end")
-
-        return maxMatch, startTime, endTime
+        return maxMatch, bestData
 
     def getTimestamps(self, query, artist):
         queryWords = query.strip().split()
@@ -76,14 +81,68 @@ class Searcher:
             if not songWords:
                 continue
 
-            matchCount, startTime, endTime = self.findLCS(queryWords, songWords)
+            matchCount, matchData = self.findLCS(queryWords, [track])
             if matchCount > 0:
                 results.append({
                     "title": track.get("title"),
                     "artist": artist,
                     "audioPath": track.get("audioPath"),
-                    "startTime": startTime,
-                    "endTime": endTime
+                    "startTime": matchData.get("startTime"),
+                    "endTime": matchData.get("endTime")
                 })
 
+        return results
 
+    def getStitchMap(self, query, artist):
+
+        query = query.strip().split()
+
+        artistPath = os.path.join(self.processedDir, artist)
+        manifestPath = os.path.join(artistPath, f"{artist}Synced.json")
+
+        if not os.path.exists(manifestPath):
+            print(f"Missing {artist}Synced.json ")
+            return []
+
+        try:
+            with open(manifestPath, "r") as f:
+                tracks = json.load(f)
+        except Exception as e:
+            print(f"Error loading {artist}Synced.json: {e}")
+            return []
+
+        stitchInstructions = []
+        cursor = 0 #state tracker
+        totalWords = len(query)
+
+        while cursor < totalWords:
+            remaining = query[cursor:]
+
+            matchCount, matchData = self.findLCS(remaining, tracks)
+            if matchCount > 0:
+                stitchInstructions.append({
+                    "text": " ". join(remaining[:matchCount]),
+                    "title": matchData.get("title"),
+                    "audioPath": matchData.get("audioPath"),
+                    "startTime": matchData.get("startTime"),
+                    "endTime": matchData.get("endTime")
+                })
+
+                cursor += matchCount
+            else:
+                print("Couldn't find word")
+                stitchInstructions.append({
+                    "text": query[cursor],
+                    "title": None,
+                    "audioPath": None,
+                    "startTime": None,
+                    "endTime": None
+                })
+                cursor += 1
+        return stitchInstructions
+
+
+if __name__ == "__main__":
+    searcher = Searcher()
+    results = searcher.getStitchMap("all my favorite songs are slow and sad", "Weezer")
+    print(results)
