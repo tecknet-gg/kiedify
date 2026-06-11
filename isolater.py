@@ -137,7 +137,7 @@ class Preprocessor:
 if __name__ == "__main__":
 
     preprocessor = Preprocessor()
-    preprocessor.processAll()
+    preprocessor.processAll(max=2)
 
     manager = DirectoryManager(musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music")
     manager.cleanDownloadDir()

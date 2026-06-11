@@ -4,7 +4,7 @@ from asyncio import as_completed
 
 import torch
 import whisperx
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Syncer:
@@ -15,30 +15,9 @@ class Syncer:
         self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device)
         print(f"Loaded mode on {self.device}")
 
+
     def syncAll(self):
-        processedDir = os.path.join(self.musicDir, "Processed2")
-
-        if not os.path.exists(processedDir):
-            print("Directory missing")
-            return
-
-        for artist in os.listdir(processedDir):
-            artistPath = os.path.join(processedDir, artist)
-            if not os.path.isdir(artistPath):
-                continue
-
-            oldManifest = os.path.join(artistPath, f"{artist}.json")
-            if not os.path.exists(oldManifest):
-                print(f"Manifest missing for {artist}")
-                continue
-
-            print(f"Syncing {artist}")
-            self.processArtist(artist, artistPath, oldManifest)
-
-        print("Syncing finished")
-
-    def syncAll2(self):
-        processedDir = os.path.join(self.musicDir, "Processed2")
+        processedDir = os.path.join(self.musicDir, "Processed")
 
         if not os.path.exists(processedDir):
             print("Directory missing")
@@ -165,7 +144,7 @@ class Syncer:
 
 if __name__ == "__main__":
     syncer = Syncer()
-    syncer.syncAll2()
+    syncer.syncAll()
 
 
 
