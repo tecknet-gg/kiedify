@@ -144,5 +144,5 @@ class Searcher:
 
 if __name__ == "__main__":
     searcher = Searcher()
-    results = searcher.getStitchMap("all my favorite songs are slow and sad", "Weezer")
+    results = searcher.getStitchMap("you only live once", "Weezer")
     print(results)
