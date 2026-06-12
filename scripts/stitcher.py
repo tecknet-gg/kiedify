@@ -12,7 +12,7 @@ class Stitcher:
         if not os.path.exists(self.savePath):
             os.makedirs(self.savePath)
 
-    def generateMP3(self, stitchInstructions, filename="output.mp3", wordGap=250 ): #word gap in ms
+    def generateMP3(self, stitchInstructions, filename="output.mp3", wordGap=300 ): #word gap in ms
         finalTrack = AudioSegment.empty()
         audioCache = {}
         separator = AudioSegment.silent(duration=wordGap)
@@ -39,6 +39,7 @@ class Stitcher:
             end = int(endTime * 1000)
 
             wordlClip = source[start:end]
+            wordlClip = self.stretchClip(wordlClip, 1000)
 
             if index > 0:
                 finalTrack += separator
@@ -54,4 +55,22 @@ class Stitcher:
             print(f"Failed to save to {finalDestination}: {e}")
             return None
 
+    def stretchClip(self, audioSegment, targetLength):
+        currentLength = len(audioSegment)
+        if currentLength >= targetLength:
+            return audioSegment
+
+        playBackRate = currentLength / targetLength
+        frameRate = int(audioSegment.frame_rate * playBackRate) #multiply by ration needed
+        if frameRate <=1:
+            return audioSegment
+
+        return audioSegment.set_frame_rate(frameRate)
+
+
+# make smoother
+# fix audio path missing in searcher
+# tweak syncer pipeline
+# implement phoneme extraction
+# variable length - stretch tracks to be a minimum length
 

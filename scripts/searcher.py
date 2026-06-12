@@ -11,6 +11,7 @@ class Searcher:
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
+        # change normalisation
 
 
     def findLCS(self, query, tracks):
