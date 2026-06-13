@@ -45,7 +45,7 @@ class Syncer:
                 executor.submit(self.processArtist, artist, artistPath, oldManifest): artist for artist, artistPath, oldManifest in tasks
             }
 
-        for futures in as_completed(futures):
+        for future in as_completed(futures):
             artist = futures[future]
             try:
                 future.result()
@@ -107,34 +107,60 @@ class Syncer:
             segments = []
             for line in lyrics:
                 if "text" in line and "start" in line and "end" in line:
+                    paddedStart = max(0.0, float(line["start"]) - 0.5)
+                    paddedEnd = max(0.0, float(line["end"]) + 0.5)
+
                     segments.append({
                         "text": line["text"],
-                        "start": line["start"],
-                        "end": line["end"],
+                        "start": paddedStart,
+                        "end": paddedEnd,
                     })
 
             if not segments:
                 print(f"No segments found in lyrics data: {audioPath}")
-                return
+                return []
 
             audio = whisperx.load_audio(audioPath)
+
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
             title = alignedResults.get("title", "")
+
             for segment in alignedResults.get("segments", []):
                 if "words" not in segment:
                     continue
 
-                for word in segment["words"]:
+                segmentStart = segment.get("start", 0.0)
+                ssegmentEnd = segment.get("end", 0.0)
+                segmentText = segment.get("text", "")
+                numberOfWords = len(segment["words"])
+
+                for i, word in enumerate(segment["words"]):
                     if "start" in word and "end" in word:
                         words.append({
                             "word": word["word"],
                             "start": round(float(word["start"]), 2),
-                            "end": round(float(word["end"]), 2)
+                            "end": round(float(word["end"]), 2),
+                        })
+                    else:
+                        prevEnd = words[-1]["end"] if words else segmentStart
+                        nextStart = ssegmentEnd
+                        for word in segmentText[i+1:]:
+                            if "start" in word and "end" in word:
+                                nextStart = float(word["start"])
+                                break
+
+                    remainingSlots = max(1, numberOfWords - i)
+                    approximateDuration = max(0.1, (nextStart - prevEnd) / remainingSlots)
+                    words.append({
+                            "word": word,
+                            "start": round(prevEnd, 2),
+                            "end": round(nextStart, 2),
                         })
 
         except Exception as e:
             print(f"Failed to generate word timestamps: {e} for {audioPath}")
             return []
+
         print(words)
         return words
 
