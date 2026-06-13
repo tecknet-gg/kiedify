@@ -5,14 +5,21 @@ from lyrics import LyricFinder
 from searcher import Searcher
 from syncer import Syncer
 from stitcher import Stitcher
+import os
 
-manager = DirectoryManager()
-downloader = Downloader()
-preprocessor = Preprocessor()
-lyricFinder = LyricFinder()
-searcher = Searcher()
-syncer = Syncer()
-stitcher = Stitcher()
+
+currentPath = os.path.abspath(__file__)
+dir = os.path.join(os.path.dirname(os.path.dirname(currentPath)), "Music")
+print(dir)
+
+manager = DirectoryManager(dir)
+downloader = Downloader(dir)
+preprocessor = Preprocessor(dir)
+lyricFinder = LyricFinder(dir)
+searcher = Searcher(dir)
+syncer = Syncer(dir)
+stitcher = Stitcher(dir)
+
 
 def aristPipeline(artist, qty=10):
     albums = downloader.getDiscog(artist, qty=qty)
