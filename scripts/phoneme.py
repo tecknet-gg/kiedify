@@ -114,3 +114,4 @@ class PhonemeExtractor:
 if __name__ == "__main__":
     extractor = PhonemeExtractor()
     extractor.processArtist("Weezer")
+
