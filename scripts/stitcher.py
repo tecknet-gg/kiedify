@@ -1,5 +1,7 @@
 import pydub
 import os
+import subprocess
+import tempfile
 
 from pydub import AudioSegment
 
@@ -12,7 +14,7 @@ class Stitcher:
         if not os.path.exists(self.savePath):
             os.makedirs(self.savePath)
 
-    def generateMP3(self, stitchInstructions, filename="output.mp3", wordGap=300 ): #word gap in ms
+    def generateMP3(self, stitchInstructions, filename="output.mp3", wordGap=200 ): #word gap in ms
         finalTrack = AudioSegment.empty()
         audioCache = {}
         separator = AudioSegment.silent(duration=wordGap)
@@ -29,7 +31,8 @@ class Stitcher:
 
             if audioPath not in audioCache:
                 try:
-                    audioCache[audioPath] = AudioSegment.from_mp3(audioPath)
+                    source = AudioSegment.from_mp3(audioPath).set_frame_rate(44100).set_channels(1) #standardising the sampling rate
+                    audioCache[audioPath] = source
                 except:
                     print(f"Failed to load audio from {audioPath}")
                     continue
@@ -38,35 +41,66 @@ class Stitcher:
             start = int(startTime * 1000) #convert times to ms
             end = int(endTime * 1000)
 
-            wordlClip = source[start:end]
-            wordlClip = self.stretchClip(wordlClip, 1000)
+            wordClip = source[start:end]
+            wordClip = self.stretchClip(wordClip, 350)
+
+            if len(wordClip) > 40:
+                wordClip = wordClip.fade_in(20).fade_out(20)
 
             if index > 0:
                 finalTrack += separator
-            finalTrack += wordlClip
+            finalTrack += wordClip
             print(f"Stitched {text} from {startTime} to {endTime}")
 
         finalDestination = os.path.join(self.savePath, filename)
 
         try:
             print(f"Saving to {finalDestination}")
-            finalTrack.export(finalDestination, format="mp3")
+            finalTrack.export(finalDestination, format="mp3", bitrate="320k") #higher bitrate for better quality
+            return finalDestination
         except Exception as e:
             print(f"Failed to save to {finalDestination}: {e}")
             return None
 
     def stretchClip(self, audioSegment, targetLength):
         currentLength = len(audioSegment)
-        if currentLength >= targetLength:
+        if currentLength > targetLength:
             return audioSegment
 
         playBackRate = currentLength / targetLength
-        frameRate = int(audioSegment.frame_rate * playBackRate) #multiply by ration needed
-        if frameRate <=1:
+        if playBackRate > 0.5:
+            return self.timeStretch(audioSegment, playBackRate)
+        else:
+            stretched = self.timeStretch(audioSegment, 0.5)
+            remaining = targetLength - len(stretched)
+
+            if remaining > 0:
+                stretched += AudioSegment.silent(duration=remaining)
+            return stretched
+
+    def timeStretch(self, audioSegment, rate):
+        if rate < 0.5 or rate > 2:
             return audioSegment
 
-        return audioSegment.set_frame_rate(frameRate)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tempIn, tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tempOut:
 
+            tempInName = tempIn.name
+            tempOutName = tempOut.name
+
+            try:
+                audioSegment.export(tempInName, format="wav")
+                cmd = [
+                    "ffmpeg","-y", "-i", tempInName, "-filter:a", f"atempo={rate}", tempOutName
+                ]
+
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                return AudioSegment.from_wav(tempOutName)
+            except Exception as e:
+                print(f"Failed to time stretch: {e}")
+                return audioSegment
+            finally:
+                os.remove(tempInName)
+                os.remove(tempOutName)
 
 # make smoother
 # fix audio path missing in searcher
