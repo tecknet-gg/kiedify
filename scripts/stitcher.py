@@ -5,6 +5,7 @@ import tempfile
 
 from pydub import AudioSegment
 from pydub.scipy_effects import high_pass_filter
+from pydub.effects import normalize
 
 
 class Stitcher:
@@ -44,6 +45,7 @@ class Stitcher:
             end = int(endTime * 1000)
 
             wordClip = source[start:end]
+            wordClip = normalize(wordClip, headroom=1.0)
             wordClip = self.stretchClip(wordClip, 350)
 
             if len(wordClip) > 40:
