@@ -156,3 +156,5 @@ if __name__ == "__main__":
     searcher = Searcher()
     results = searcher.getStitchMap("you only live once", "Weezer")
     print(results)
+
+# add fuzzy search

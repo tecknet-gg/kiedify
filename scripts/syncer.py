@@ -2,7 +2,7 @@ import json
 import os
 import torch
 import whisperx
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Syncer:
