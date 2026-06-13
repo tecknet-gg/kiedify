@@ -3,6 +3,13 @@ import json
 import re
 import random
 
+from g2p_en import G2p
+import pydub
+from pydub import AudioSegment
+
+
+#add fuzzy search
+#add phoneme stitching for missing words
 
 
 class Searcher:
@@ -154,7 +161,51 @@ class Searcher:
 
 if __name__ == "__main__":
     searcher = Searcher()
-    results = searcher.getStitchMap("you only live once", "Weezer")
-    print(results)
+    #results = searcher.getStitchMap("you only live once", "Weezer")
+    #print(results)
+    phonemePath = os.path.join(searcher.dir, "Processed2", "Weezer", "WeezerPhonemes.json")
+    targetWord = "cumulonimbus"
+    output = os.path.join(searcher.dir,"Stitched", f"{targetWord}.mp3")
 
-# add fuzzy search
+    with open(phonemePath, "r") as f:
+        phonemeBank = json.load(f)
+
+    g2p = G2p()
+    rawPhonemes = g2p(targetWord)
+
+    targetPhonemes = ["".join([char for char in phoneme if char.isalpha()]).upper() for phoneme in rawPhonemes]
+
+    audioStitch = []
+    missingPhonemes = False
+
+    for phoneme in targetPhonemes:
+        availableClips = phonemeBank.get(phoneme, [])
+
+        if not availableClips:
+            missingPhonemes = True
+            continue
+
+        selectedClip = availableClips[0]
+        audioStitch.append(selectedClip)
+
+        if missingPhonemes:
+            print(f"Missing phonemes for {targetWord}")
+        else:
+            combinedAudio = AudioSegment.empty()
+            for index, step in enumerate(audioStitch):
+                sourcePath = step["audioPath"]
+
+                if not os.path.exists(sourcePath):
+                    print(f"Missing audio file: {sourcePath}")
+                    continue
+
+                start = int(step["start"]*1000)
+                end = int(step["end"]*1000)
+
+                trackAudio = AudioSegment.from_file(sourcePath)
+                phonemeSlice = trackAudio[start:end]
+
+                combinedAudio += phonemeSlice
+
+            combinedAudio.export(output, format="mp3")
+

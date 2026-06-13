@@ -108,9 +108,8 @@ class Stitcher:
                 os.remove(tempInName)
                 os.remove(tempOutName)
 
-# make smoother
-# fix audio path missing in searcher
-# tweak syncer pipeline
-# implement phoneme extraction
-# variable length - stretch tracks to be a minimum length
+
+
+
+
 
