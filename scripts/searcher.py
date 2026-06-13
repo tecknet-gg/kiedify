@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import random
 
 
 
@@ -17,7 +18,8 @@ class Searcher:
     def findLCS(self, query, tracks):
 
         maxMatch = 0
-        bestData = None
+        matchData = None
+        bestMatches = []
 
         queryWords = [self.normaliseWord(word) for word in query] #normalise words in query
 
@@ -39,14 +41,20 @@ class Searcher:
                         currentSong += 1
                         currentQuery += 1
 
-                    if matchCount > maxMatch:
-                        maxMatch = matchCount
-                        bestData = {
+                    if matchCount > 0:
+                        matchData = {
                             "title": track.get("title"),
                             "audioPath": track.get("audioPath"),
                             "startTime": song[songIndex].get("start"),
                             "endTime": song[currentSong-1].get("end")
                         }
+
+                        if matchCount > maxMatch:
+                            maxMatch = matchCount
+                            bestMatches = [matchData]
+
+                        elif matchCount == maxMatch:
+                            bestMatches.append(matchData)
 
                     songIndex = currentSong if matchCount > 1 else songIndex + 1
 
@@ -56,7 +64,8 @@ class Searcher:
         if maxMatch == 0:
             return 0, None
 
-        return maxMatch, bestData
+        chosenMatch = random.choice(bestMatches)
+        return maxMatch, chosenMatch
 
     def getTimestamps(self, query, artist):
         queryWords = query.strip().split()
