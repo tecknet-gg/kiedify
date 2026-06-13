@@ -3,7 +3,7 @@ import os
 import torch
 import whisperx
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import threading
 
 class Syncer:
     def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_LV60K_960H" , device = "cpu", computeType = "int16"):
@@ -12,6 +12,8 @@ class Syncer:
         self.device = device
         self.modelName = modelName
         self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device, model_name=self.modelName)
+
+        self.lock = threading.Lock()
         print(f"Loaded mode on {self.device}")
 
 
@@ -23,6 +25,8 @@ class Syncer:
             return
 
         tasks = []
+        total = 0
+
         for artist in os.listdir(processedDir):
             artistPath = os.path.join(processedDir, artist)
             if not os.path.isdir(artistPath):
@@ -33,11 +37,22 @@ class Syncer:
                 print(f"Manifest missing for {artist}")
                 continue
 
+            try:
+                with open(oldManifest, "r") as f:
+                    trackCount = len(json.load(f))
+                    total += trackCount
+            except Exception as e:
+                print(f"Failed to load manifest for {artist}: {e}")
+                continue
+
             tasks.append((artist, artistPath, oldManifest))
 
         if not tasks:
             print("No artists to sync")
             return
+
+        self.total = total
+        self.completed = 0
 
         print(f"Starting sync for {len(tasks)} artists")
 
@@ -64,7 +79,8 @@ class Syncer:
             print(f"Failed to load manifest for {artistName}: {e}")
             return
 
-        newManifest = []
+        newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
+        tmpPath = os.path.join(artistPath, f"{artistName}SyncedTmp.json")
 
         for track in oldTracks:
             title = track.get("title")
@@ -74,9 +90,15 @@ class Syncer:
                 print(f"Skipping {title}, no lyrics found")
                 continue
 
+                with self.lock:
+                    self.completed += 1
+                continue
+
             audio = track.get("lyricsPath")
             if not audio or not os.path.exists(audio):
                 print(f"Skipping {title}, no audio found")
+                with self.lock:
+                    self.completed += 1
                 continue
 
             print(f"Aliging lyrics for {title}")
@@ -106,17 +128,28 @@ class Syncer:
                 "words": wordTimestamps,
             }
 
-            newManifest.append(syncedData)
-            newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
-            tmpPath = os.path.join(artistPath, f"{artistName}SyncedTmp.json")
+            with self.lock:
+                existing = []
+                if os.path.exists(newManifestPath):
+                    try:
+                        with open(newManifestPath, "r") as f:
+                            existing = json.load(f)
+                    except Exception as e:
+                        print(f"Failed to load synced manifest for {title}: {e}")
 
+                existing = [record for record in existing if record.get("title") != title]
+                existing.append(syncedData)
 
-            try:
-                with open(tmpPath, "w") as f:
-                    json.dump(newManifest, f, indent=4)
-                os.replace(tmpPath, newManifestPath)
-            except Exception as e:
-                print(f"Failed to save synced manifest for {title}: {e}")
+                try:
+                    with open(tmpPath, "w") as f:
+                        json.dump(existing, f, indent=4)
+                    os.replace(tmpPath, newManifestPath)
+                except Exception as e:
+                    print(f"Failed to save synced manifest for {title}: {e}")
+
+                self.completed += 1
+                percentage = (self.completed/self.total) * 100
+                print(f"[Progress: {self.completed}/{self.total} Tracks Complete] ({percentage:.1f}%) Saved: \"{title}\"")
 
     def generateWordTimestamps(self, audioPath, lyrics):
         words = []
