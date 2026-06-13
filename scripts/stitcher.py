@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 
 from pydub import AudioSegment
+from pydub.scipy_effects import high_pass_filter
 
 
 class Stitcher:
@@ -32,6 +33,7 @@ class Stitcher:
             if audioPath not in audioCache:
                 try:
                     source = AudioSegment.from_mp3(audioPath).set_frame_rate(44100).set_channels(1) #standardising the sampling rate
+                    source = high_pass_filter(source, 130)
                     audioCache[audioPath] = source
                 except:
                     print(f"Failed to load audio from {audioPath}")
@@ -47,9 +49,11 @@ class Stitcher:
             if len(wordClip) > 40:
                 wordClip = wordClip.fade_in(20).fade_out(20)
 
-            if index > 0:
-                finalTrack += separator
-            finalTrack += wordClip
+            if index == 0:
+                finalTrack = wordClip
+            else:
+                finalTrack = finalTrack.append(wordClip,crossfade=100)
+
             print(f"Stitched {text} from {startTime} to {endTime}")
 
         finalDestination = os.path.join(self.savePath, filename)
