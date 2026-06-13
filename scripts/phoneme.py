@@ -1,7 +1,7 @@
 import json
 import os
 from g2p_en import G2p
-from requests.packages import target
+import nltk
 
 
 class PhonemeExtractor:
@@ -9,6 +9,7 @@ class PhonemeExtractor:
         self.musicDir = musicDir
         self.target = target
         self.g2p = G2p()
+        #nltk.download('averaged_perceptron_tagger_eng')
 
         self.validPhonemes = {
             'AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D', 'DH', 'EH', 'ER', 'EY',
@@ -31,7 +32,7 @@ class PhonemeExtractor:
 
     def processArtist(self, artistName):
         processedDir = os.path.join(self.musicDir, "Processed2", artistName)
-        manifestPath = os.path.join(processedDir, f"{artistName}Synced.json")
+        manifestPath = os.path.join(processedDir, f"{artistName}Synced copy.json")
         outputPath = os.path.join(processedDir, f"{artistName}Phonemes.json")
 
         if not os.path.exists(manifestPath):
@@ -62,14 +63,14 @@ class PhonemeExtractor:
                 wordEnd = float(word.get("end", 0.0))
                 wordDuration = wordEnd - wordStart
 
-                if not word or wordDuration <= 0:
+                if not wordText or wordDuration <= 0:
                     continue
 
                 rawPhonemes = self.g2p(wordText)
 
                 cleanPhonemes = []
                 for phoneme in rawPhonemes:
-                    cleanPhoneme = "".join([i for i in phoneme if i.isalpha().upper()])
+                    cleanPhoneme = "".join([i for i in phoneme if i.isalpha()]).upper()
                     if cleanPhoneme in self.validPhonemes:
                         cleanPhonemes.append(cleanPhoneme)
 
@@ -78,7 +79,7 @@ class PhonemeExtractor:
 
                 currentTime = wordStart
 
-                totalWeight = sum(self.phonemeWeights.get(phoneme) for phoneme in cleanPhonemes)
+                totalWeight = sum(self.phonemeWeights.get(phoneme, 1.0) for phoneme in cleanPhonemes)
                 for phoneme in cleanPhonemes:
                     phonemeWeight = self.phonemeWeights.get(phoneme, 1.0)
                     sliceDuration = (phonemeWeight / totalWeight) * wordDuration #weighted interpolation
