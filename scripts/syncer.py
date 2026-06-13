@@ -6,11 +6,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Syncer:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelSize = "base", device = "cpu", computeType = "int16"):
+    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_LV60K_960H" , device = "cpu", computeType = "int16"):
 
         self.musicDir = musicDir
         self.device = device
-        self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device)
+        self.modelName = modelName
+        self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device, model_name=self.modelName)
         print(f"Loaded mode on {self.device}")
 
 
@@ -40,7 +41,7 @@ class Syncer:
 
         print(f"Starting sync for {len(tasks)} artists")
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
                 executor.submit(self.processArtist, artist, artistPath, oldManifest): artist for artist, artistPath, oldManifest in tasks
             }
@@ -79,7 +80,20 @@ class Syncer:
                 continue
 
             print(f"Aliging lyrics for {title}")
-            wordTimestamps = self.generateWordTimestamps(audio, lyrics)
+
+            cleanedLyrics = [
+                {
+                "text": self.cleanLyrics(line["text"]),
+                "start": line["start"],
+                "end": line["end"]
+                }
+                for line in lyrics
+                if "text" in line and "start" in line and "end" in line
+            ]
+
+
+
+            wordTimestamps = self.generateWordTimestamps(audio, cleanedLyrics)
 
             syncedData = {
                 "title": title,
@@ -94,27 +108,20 @@ class Syncer:
 
             newManifest.append(syncedData)
             newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
+            tmpPath = os.path.join(artistPath, f"{artistName}SyncedTmp.json")
+
+
             try:
-                with open(newManifestPath, "w") as f:
+                with open(tmpPath, "w") as f:
                     json.dump(newManifest, f, indent=4)
-                print(f"Synced manifest saved for {title}")
+                os.replace(tmpPath, newManifestPath)
             except Exception as e:
                 print(f"Failed to save synced manifest for {title}: {e}")
 
     def generateWordTimestamps(self, audioPath, lyrics):
         words = []
         try:
-            segments = []
-            for line in lyrics:
-                if "text" in line and "start" in line and "end" in line:
-                    paddedStart = max(0.0, float(line["start"]) - 0.5)
-                    paddedEnd = max(0.0, float(line["end"]) + 0.5)
-
-                    segments.append({
-                        "text": line["text"],
-                        "start": paddedStart,
-                        "end": paddedEnd,
-                    })
+            segments = self.chunkLyrics(lyrics)
 
             if not segments:
                 print(f"No segments found in lyrics data: {audioPath}")
@@ -123,48 +130,58 @@ class Syncer:
             audio = whisperx.load_audio(audioPath)
 
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
-            title = alignedResults.get("title", "")
 
             for segment in alignedResults.get("segments", []):
-                if "words" not in segment:
+
+                if not segment.get("words"):
                     continue
 
-                segmentStart = segment.get("start", 0.0)
-                ssegmentEnd = segment.get("end", 0.0)
-                segmentText = segment.get("text", "")
-                numberOfWords = len(segment["words"])
+                segment["words"].sort(key=lambda x: x.get("start", 0))
 
-                for i, word in enumerate(segment["words"]):
-                    if "start" in word and "end" in word:
-                        words.append({
-                            "word": word["word"],
-                            "start": round(float(word["start"]), 2),
-                            "end": round(float(word["end"]), 2),
-                        })
-                    else:
-                        prevEnd = words[-1]["end"] if words else segmentStart
-                        nextStart = ssegmentEnd
-                        for word in segmentText[i+1:]:
-                            if "start" in word and "end" in word:
-                                nextStart = float(word["start"])
-                                break
-
-                    remainingSlots = max(1, numberOfWords - i)
-                    approximateDuration = max(0.1, (nextStart - prevEnd) / remainingSlots)
+                for word in segment["words"]:
+                    if word.get("start") is None or word.get("end") is None:
+                        continue
+                    wordText = word.get("word", "")
+                    if not wordText:
+                        continue
                     words.append({
-                            "word": word,
-                            "start": round(prevEnd, 2),
-                            "end": round(nextStart, 2),
-                        })
+                        "word": word["word"],
+                        "start": round(float(word["start"]), 2),
+                        "end": round(float(word["end"]), 2),
+                    })
 
         except Exception as e:
             print(f"Failed to generate word timestamps: {e} for {audioPath}")
             return []
 
-        print(words)
+        print(f"{len(words)} words aligned")
         return words
 
+    def cleanLyrics(self, text):
+        return (
+            text.lower()
+            .replace("’", "'")
+            .replace(",", "")
+            .replace(".", "")
+            .replace("!", "")
+            .replace("?", "")
+            .strip()
+        )
 
+
+    def chunkLyrics(self, lyrics, chunkSize=3):
+        chunks = []
+        for i in range(0, len(lyrics), chunkSize):
+            group = lyrics[i:i+chunkSize]
+            text = " ".join([lyric["text"] for lyric in group])
+            start = group[0]["start"]
+            end = group[-1]["end"]
+            chunks.append({
+                "text": text,
+                "start": start,
+                "end": end
+            })
+        return chunks
 
 if __name__ == "__main__":
     syncer = Syncer()

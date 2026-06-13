@@ -8,12 +8,14 @@ Current progress:
 - [x] Lyric Sourcing
 - [x] Word Level Syncing
 - [ ] Phoneme Level Syncing
+- [ ] Fuzzy Matching
 - [x] Greedy Maxmial Matching Algorithm for Words
 - [ ] Phoneme Level Matching Algorithm
-- [ ] Audio Stitching
+- [x] Audio Stitching
 - [ ] Pipeline Polishing
 - [ ] API Wrapping
-- [ ] Backend
+- [ ] Backend Deployment
+- [ ] Neutered LLM Chatbot
 - [ ] Frontend
 
 
