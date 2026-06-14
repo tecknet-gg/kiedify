@@ -4,9 +4,11 @@ import torch
 import whisperx
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+from scipy import butter, filtfilt
+
 
 class Syncer:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_LV60K_960H" , device = "cpu", computeType = "int16"):
+    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="wav2vec2-large-xlsr-53" , device = "cpu", computeType = "int16"):
 
         self.musicDir = musicDir
         self.device = device
@@ -161,6 +163,9 @@ class Syncer:
                 return []
 
             audio = whisperx.load_audio(audioPath)
+            audio = self.highPass(audio, 16000)
+            audio = audio * 0.9 / max(abs(audio)) # compression
+
 
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
 
@@ -202,19 +207,45 @@ class Syncer:
         )
 
 
-    def chunkLyrics(self, lyrics, chunkSize=3):
+    def chunkLyrics(self, lyrics, maxDuration=8.0):
         chunks = []
-        for i in range(0, len(lyrics), chunkSize):
-            group = lyrics[i:i+chunkSize]
-            text = " ".join([lyric["text"] for lyric in group])
-            start = group[0]["start"]
-            end = group[-1]["end"]
+        currentChunk = []
+        chunkStart = None
+
+        for line in lyrics:
+            if chunkStart is None:
+                chunkStart = line["start"]
+
+            currentChunk.append(line)
+            chunkEnd = line["end"]
+
+            if (chunkEnd-chunkStart)>=maxDuration:
+                chunks.append({
+                    "text": "".join(currentChunk),
+                    "start": chunkStart,
+                    "end": chunkEnd,
+                })
+                currentChunk = []
+                chunkStart = None
+
+        if currentChunk:
             chunks.append({
-                "text": text,
-                "start": start,
-                "end": end
+                "text": "".join(line["text"] for line in currentChunk),
+                "start": chunkStart,
+                "end": chunkEnd[-1]["end"],
             })
+
         return chunks
+
+
+
+    def highPass(self, audio, sampleRate, cutoff=100):
+        nyquist = sampleRate * 0.5 # nyquist frequency - upper boundary for aliasing
+        normalisedCutoff = cutoff / nyquist
+
+        a, b = butter(N=2, Wn=normalisedCutoff, btype='high', analog=False)
+        filtered = filtfilt(a, b, audio)
+        return filtered
 
 if __name__ == "__main__":
     syncer = Syncer()
