@@ -4,11 +4,12 @@ import torch
 import whisperx
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from scipy import butter, filtfilt
+from scipy.signal import butter, filtfilt
+import numpy as np
 
 
 class Syncer:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="wav2vec2-large-xlsr-53" , device = "cpu", computeType = "int16"):
+    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_960H" , device = "cpu", computeType = "int16"):
 
         self.musicDir = musicDir
         self.device = device
@@ -84,26 +85,28 @@ class Syncer:
         newManifestPath = os.path.join(artistPath, f"{artistName}Synced.json")
         tmpPath = os.path.join(artistPath, f"{artistName}SyncedTmp.json")
 
+        existingTracks = []
+        if os.path.exists(newManifestPath):
+            try:
+                with open(newManifestPath, "r") as f:
+                    existingTracks = json.load(f)
+            except Exception as e:
+                print(f"Failed to load manifest for {artistName}: {e}")
+
+        syncedDict = {track["title"]: track for track in existingTracks}
+
         for track in oldTracks:
             title = track.get("title")
-
             lyrics = track.get("lyrics")
-            if not lyrics or not track.get("lyricsPath"):
-                print(f"Skipping {title}, no lyrics found")
-                continue
-
-                with self.lock:
-                    self.completed += 1
-                continue
-
             audio = track.get("lyricsPath")
-            if not audio or not os.path.exists(audio):
-                print(f"Skipping {title}, no audio found")
+
+            if not lyrics or not audio or not os.path.exists(audio):
+                print(f"Skipping {artistName}: {title}")
                 with self.lock:
                     self.completed += 1
                 continue
 
-            print(f"Aliging lyrics for {title}")
+            print(f"Processing {artistName}: {title}")
 
             cleanedLyrics = [
                 {
@@ -129,6 +132,7 @@ class Syncer:
                 "audioPath": audio,
                 "words": wordTimestamps,
             }
+            syncedDict[title] = syncedData
 
             with self.lock:
                 existing = []
@@ -157,15 +161,23 @@ class Syncer:
         words = []
         try:
             segments = self.chunkLyrics(lyrics)
+            for i, segment in enumerate(segments):
+                print(f"Segment: {i} {segment['start']} to {segment['end']}: {segment['text']}")
+
 
             if not segments:
                 print(f"No segments found in lyrics data: {audioPath}")
                 return []
 
             audio = whisperx.load_audio(audioPath)
+            audio = np.asarray(audio, dtype=np.float32).flatten()
             audio = self.highPass(audio, 16000)
-            audio = audio * 0.9 / max(abs(audio)) # compression
 
+            peak = max(abs(audio))
+            if peak > 0: #compression
+                audio = audio*0.9/peak
+
+            print("audio:", type(audio), getattr(audio, "shape", None), audio.dtype)
 
             alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
 
@@ -221,7 +233,7 @@ class Syncer:
 
             if (chunkEnd-chunkStart)>=maxDuration:
                 chunks.append({
-                    "text": "".join(currentChunk),
+                    "text": " ".join(line["text"] for line in currentChunk),
                     "start": chunkStart,
                     "end": chunkEnd,
                 })
@@ -230,9 +242,9 @@ class Syncer:
 
         if currentChunk:
             chunks.append({
-                "text": "".join(line["text"] for line in currentChunk),
+                "text": " ".join(line["text"] for line in currentChunk),
                 "start": chunkStart,
-                "end": chunkEnd[-1]["end"],
+                "end": chunkEnd,
             })
 
         return chunks
@@ -240,12 +252,19 @@ class Syncer:
 
 
     def highPass(self, audio, sampleRate, cutoff=100):
+        audio = np.asarray(audio, dtype=np.float32).flatten()
+        if audio.ndim != 1:
+            audio = audio.flatten()
+
+        if len(audio) < 100:
+            return audio
+
         nyquist = sampleRate * 0.5 # nyquist frequency - upper boundary for aliasing
         normalisedCutoff = cutoff / nyquist
 
-        a, b = butter(N=2, Wn=normalisedCutoff, btype='high', analog=False)
-        filtered = filtfilt(a, b, audio)
-        return filtered
+        b, a = butter(N=2, Wn=normalisedCutoff, btype='high')
+        filtered = filtfilt(b, a, audio)
+        return filtered.astype(np.float32)
 
 if __name__ == "__main__":
     syncer = Syncer()
