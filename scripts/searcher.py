@@ -2,6 +2,7 @@ import os
 import json
 import re
 import random
+from rapidfuzz import fuzz
 
 from g2p_en import G2p
 import pydub
@@ -15,12 +16,62 @@ from pydub import AudioSegment
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
-        self.processedDir = os.path.join(self.dir, "Processed2")
+        self.processedDir = os.path.join(self.dir, "Processed3")
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
         # change normalisation
 
+    def fuzzyMatchWords(self, word1, word2, threshold=85):
+        return fuzz.ratio(word1, word2) >= threshold
+
+    def findFuzzyLCS(self, query, tracks, threshold=85):
+        maxMatch = 0
+        matchData = None
+        bestMatches = []
+
+        queryWords = [self.normaliseWord(word) for word in query]
+        if not queryWords:
+            return 0, None
+
+        for track in tracks:
+            song = track.get("words", [])
+            songWords = [self.normaliseWord(word["word"]) for word in song]
+
+            songIndex = 0
+            while songIndex < len(songWords):
+                if self.fuzzyMatchWords(songWords[songIndex], queryWords[0], threshold):
+                    matchCount = 0
+                    currentSong = songIndex
+                    currentQuery = 0
+
+                    while (currentSong < len(songWords) and currentQuery < len(queryWords) and self.fuzzyMatchWords(songWords[currentSong], queryWords[currentQuery], threshold)):
+                        matchCount += 1
+                        currentSong += 1
+                        currentQuery += 1
+
+                    if matchCount > 0:
+                        matchData = {
+                            "title": track.get("title"),
+                            "audioPath": track.get("audioPath"),
+                            "startTime": song[songIndex].get("start"),
+                            "endTime": song[currentSong-1].get("end"),
+                        }
+
+                        if matchCount > maxMatch:
+                            maxMatch = matchCount
+                            bestMatches = [matchData]
+                        elif matchCount == maxMatch:
+                            bestMatches.append(matchData)
+
+                    songIndex = currentSong if matchCount > 1 else songIndex + 1
+
+                else:
+                    songIndex += 1
+        if maxMatch == 0:
+            return 0, None
+        chosenMatch = random.choice(bestMatches)
+        return maxMatch, chosenMatch
 
     def findLCS(self, query, tracks):
 
@@ -135,7 +186,14 @@ class Searcher:
         while cursor < totalWords:
             remaining = query[cursor:]
 
-            matchCount, matchData = self.findLCS(remaining, tracks)
+            matchCount = 0
+            matchData = None
+
+            for threshold in [90, 75]:
+                matchCount, matchData = self.findFuzzyLCS(remaining, tracks, threshold)
+                if matchCount > 0:
+                    break
+
             if matchCount > 0:
                 stitchInstructions.append({
                     "text": " ". join(remaining[:matchCount]),
@@ -148,6 +206,7 @@ class Searcher:
                 cursor += matchCount
             else:
                 print("Couldn't find word")
+                #marked for phoneme stitching
                 stitchInstructions.append({
                     "text": query[cursor],
                     "title": None,
@@ -163,7 +222,7 @@ if __name__ == "__main__":
     searcher = Searcher()
     #results = searcher.getStitchMap("you only live once", "Weezer")
     #print(results)
-    phonemePath = os.path.join(searcher.dir, "Processed2", "Weezer", "WeezerPhonemes.json")
+    phonemePath = os.path.join(searcher.dir, "Processed3", "Weezer", "WeezerPhonemes.json")
     targetWord = "cumulonimbus"
     output = os.path.join(searcher.dir,"Stitched", f"{targetWord}.mp3")
 
