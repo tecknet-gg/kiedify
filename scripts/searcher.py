@@ -7,10 +7,14 @@ from rapidfuzz import fuzz
 from g2p_en import G2p
 import pydub
 from pydub import AudioSegment
+from rapidfuzz.distance.DamerauLevenshtein import similarity
 
 
 #add fuzzy search
 #add phoneme stitching for missing words
+
+# use getStitchMap for fuzzy or strict
+# use different methods for looped llm, semantic matching, and graph decoding
 
 
 class Searcher:
@@ -20,7 +24,120 @@ class Searcher:
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
-        # change normalisation
+        # expand on normalisation
+
+    def semanticNormalise(self, text):
+        rawSentence = " ".join(text)
+        clean = re.sub(r'[^\w\s\']', "", rawSentence).lower().strip()
+        return clean
+
+    def semanticMatch(self, query, artist, minmumLength=3, similarityThreshold=0.70):
+        print("Performing semantic matching search")
+
+        if isinstance(query, str):
+            queryTokens = query.strip().split()
+        else:
+            queryTokens = query
+
+        artistPath = os.path.join(self.processedDir, artist)
+        manifestPath = os.path.join(artistPath, f"{artist}Synced.json")
+
+        if not os.path.exists(manifestPath):
+            print(f"Missing {artist}Synced.json ")
+            return []
+        try:
+            with open(manifestPath, "r") as f:
+                tracks = json.load(f)
+        except Exception as e:
+            print(f"Error loading {artist}Synced.json: {e}")
+            return []
+
+        if not hasattr(self, 'nlp'):
+            import spacy
+            print("Loading spacy model")
+            self.nlp = spacy.load("en_core_web_md") #lazy loading
+
+        stitchInstructions = []
+        cursor = 0
+
+        print(f"Query length: {len(queryTokens)}")
+
+        while cursor < len(queryTokens):
+            remaining = queryTokens[cursor:]
+            currentWord = remaining[0]
+            print(f"Current word: {currentWord}")
+
+            matchCount = 0
+            matchData = None
+            highestSimilarity = 0.0
+
+            maxWindow = len(remaining)
+            phraseFound = False
+
+            for currentLength in range(maxWindow, minmumLength-1, -1):
+                querySlice = remaining[:currentLength]
+                normalisedQuery = self.semanticNormalise(querySlice)
+                queryDoc = self.nlp(normalisedQuery)
+
+                if not queryDoc.vector_norm:
+                    continue
+
+                print(f"Current window length: {currentLength}")
+
+                for track in tracks:
+                    song = track.get("words", [])
+                    if len(song) < currentLength:
+                        continue
+
+                    for i in range(len(song) - currentLength + 1):
+                        songWindow = [song[j]["word"] for j in range(i, i+currentLength)]
+                        normalisedSong = self.semanticNormalise(songWindow)
+                        songDoc = self.nlp(normalisedSong)
+
+                        if not songDoc.vector_norm:
+                            continue
+
+                        similarity = queryDoc.similarity(songDoc)
+
+                        if similarity >= similarityThreshold:
+                            if similarity > highestSimilarity:
+                                highestSimilarity = similarity
+                                matchCount = currentLength
+
+                                matchData = {
+                                    "title": track.get("title"),
+                                    "audioPath": track.get("audioPath"),
+                                    "startTime": song[i].get("start"),
+                                    "endTime": song[i+currentLength-1].get("end")
+                                }
+                                phraseFound = True
+
+                if phraseFound:
+                    break
+
+            if matchCount > 0 and matchData is not None:
+                stitchInstructions.append({
+                    "text": " ". join(remaining[:matchCount]),
+                    "title": matchData.get("title"),
+                    "audioPath": matchData.get("audioPath"),
+                    "startTime": matchData.get("startTime"),
+                    "endTime": matchData.get("endTime"),
+                    "status": "matched",
+                    "mode": "semantic"
+                })
+                cursor += matchCount
+            else:
+                stitchInstructions.append({
+                    "text": " ". join(remaining[:matchCount]),
+                    "title": matchData.get("title"),
+                    "audioPath": matchData.get("audioPath"),
+                    "startTime": matchData.get("startTime"),
+                    "endTime": matchData.get("endTime"),
+                    "status": "unmatched",
+                    "mode": None
+                })
+                cursor += 1
+        return stitchInstructions
 
     def fuzzyMatchWords(self, word1, word2, threshold=85):
         return fuzz.ratio(word1, word2) >= threshold
@@ -161,7 +278,7 @@ class Searcher:
 
         return results
 
-    def getStitchMap(self, query, artist):
+    def basicMatch(self, query, artist, mode="fuzzy"):
 
         query = query.strip().split()
 
@@ -189,10 +306,14 @@ class Searcher:
             matchCount = 0
             matchData = None
 
-            for threshold in [90, 75]:
-                matchCount, matchData = self.findFuzzyLCS(remaining, tracks, threshold)
-                if matchCount > 0:
-                    break
+
+            if mode != "fuzzy":
+                matchCount, matchData = self.findLCS(remaining, tracks, threshold)
+            elif mode == "fuzzy":
+                for threshold in [90, 75]:
+                    matchCount, matchData = self.findFuzzyLCS(remaining, tracks, threshold)
+                    if matchCount > 0:
+                        break
 
             if matchCount > 0:
                 stitchInstructions.append({
@@ -200,7 +321,8 @@ class Searcher:
                     "title": matchData.get("title"),
                     "audioPath": matchData.get("audioPath"),
                     "startTime": matchData.get("startTime"),
-                    "endTime": matchData.get("endTime")
+                    "endTime": matchData.get("endTime"),
+                    "mode": "basic"
                 })
 
                 cursor += matchCount
@@ -212,7 +334,8 @@ class Searcher:
                     "title": None,
                     "audioPath": None,
                     "startTime": None,
-                    "endTime": None
+                    "endTime": None,
+                    "mode": "phoneme"
                 })
                 cursor += 1
         return stitchInstructions

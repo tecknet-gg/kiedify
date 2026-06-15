@@ -44,5 +44,5 @@ if __name__ == "__main__":
     searcher = Searcher(dir)
     stitcher = Stitcher(dir)
 
-    stitchList = searcher.getStitchMap(query, artist)
+    stitchList = searcher.basicMatch(query, artist)
     stitcher.generateMP3(stitchList)
