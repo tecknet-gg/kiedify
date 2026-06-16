@@ -1,12 +1,19 @@
 import json
 import os
+import subprocess
+
 from g2p_en import G2p
 import nltk
+import os
+import json
+import re
+import inflect
 
 
 class PhonemeExtractor:
-    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music", target=10):
+    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music", mfaPath="/Users/jeevan/miniconda3/envs/mfa/bin/mfa", target=10):
         self.musicDir = musicDir
+        self.mfaPath = mfaPath
         self.target = target
         self.g2p = G2p()
         #nltk.download('averaged_perceptron_tagger_eng')
@@ -111,7 +118,112 @@ class PhonemeExtractor:
     def quotasFilled(self, phonemeBank): #for the basic interpolator
         return all(len(clips) >= self.target for clips in phonemeBank.values()) #returns true if all phonemes reach quota
 
+    def getEnv(self):
+        env = os.environ.copy()
+        env["PATH"] = f"{os.path.dirname(self.mfaPath)}:{env.get('PATH', '')}"
+        return env
+
+    def processMFA(self, artistName):
+        processedDir = os.path.join(self.musicDir, "Processed3", artistName)
+        mfaOutputDir = os.path.join(processedDir, "MFA")
+        outputPath = os.path.join(processedDir, f"{artistName}Phonemes.json")
+
+        if not os.path.exists(mfaOutputDir):
+            pass
+
+    def runMFA(self, artistName):
+        processedDir = os.path.join(self.musicDir, "Processed3", artistName)
+        mfaOutputDir = os.path.join(processedDir, "MFA")
+
+        if not os.path.exists(mfaOutputDir):
+            os.makedirs(mfaOutputDir)
+
+        myEnv = self.getEnv()
+
+
+        try:
+            subprocess.run([self.mfaPath, "model", "download", "dictionary", "english_us_arpa"], check=True, env=myEnv)
+            subprocess.run([self.mfaPath, "model", "download", "acoustic", "english_us_arpa"], check=True, env=myEnv)
+            print("Downloaded MFA models")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to download MFA models: {e}")
+
+        print(f"Starting MFA alignment for {artistName}")
+
+        cmd = [
+            f"{self.mfaPath}", "align", processedDir, "english_us_arpa", "english_us_arpa", mfaOutputDir, "--clean"
+        ]
+
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=myEnv)
+            print(f"MFA alignment completed for {artistName}")
+            print(result.stdout)
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"MFA alignment failed for {artistName}: {e}")
+            print(e.stdout)
+            print(e.stderr)
+            return False
+
+    def cleanLyrics(self, lyrics):
+        text = re.sub(r'\d+', self.replaceNum, lyrics)
+
+        text = text.lower()
+        text = re.sub(r'[()\[\]{}.,!?;\"]', '', text)
+        text = text.replace('-', ' ')
+
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    def replaceNum(self, match):
+        p = inflect.engine()
+        return p.number_to_words(match.group(0)).replace("-", " ").strip()
+
+    def prepareMFA(self, artist, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
+        processedDir = os.path.join(musicDir, "Processed3", artist)
+        manifestPath = os.path.join(processedDir, f"{artist}Synced.json")
+
+        if not os.path.exists(manifestPath):
+            print(f"Synced manifest database missing for: {artist}")
+            return
+
+        with open(manifestPath, "r") as f:
+            tracks = json.load(f)
+
+        staged = 0
+        print("Staging .lab files for MFA")
+
+        for track in tracks:
+            audioPath = track.get("audioPath")
+            wordList = track.get("words", [])
+
+            if not audioPath:
+                continue
+
+            audioName = os.path.basename(audioPath)
+            localAudioPath = os.path.join(processedDir, audioName)
+
+            if not os.path.exists(localAudioPath):
+                continue
+
+            fullText = " ".join([word["word"] for word in wordList]).strip()
+            fullText = self.cleanLyrics(fullText)
+
+            if not fullText:
+                continue
+
+            songName, _ = os.path.splitext(audioName)
+            labPath = os.path.join(processedDir, f"{songName}.lab")
+
+            with open(labPath, "w") as f:
+                f.write(fullText)
+            staged += 1
+
+        print(f"Staged {staged} pairs of .lab files for {artist}")
+        return True
+
 if __name__ == "__main__":
     extractor = PhonemeExtractor()
-    extractor.processArtist("Weezer")
+    extractor.runMFA("Weezer")
+    extractor.runMFA("Weezer")
 
