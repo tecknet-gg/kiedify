@@ -22,24 +22,36 @@ Progress:
 
 ## Main pipeline functions:
 
+### downloading and preprocessing
 passed, failed = downloader.artistToInstalled(artists, qty=15, nthreads=25)
 
 processor.generateQueue(passed, failed, nthreads=25)
+
 processor.processMultithreaded(nthreads=2)
 
 manager.cleanIsolatedDir()
+
 manager.flattenProcessedDir()
 
 
+### lyrics
+
 lyrics.ammendMetadata()
+
 lyrics.injectDuration()
+
 lyrics.generateQueue()
+
 lyrics.gatherMulithreaded()
+
 lyrics.cleanLyricless()
 
+### phoneme
 
 #pass the class the path to MFA
+
 phoneme.prepareMFA(artist) #run for all artists -> generates .lab filse
+
 phoneme.processMFA(artist) #run for all artists -> runs .lab files through MFA
 
 ## Searching and stitching
