@@ -10,11 +10,10 @@ from pydub import AudioSegment
 from rapidfuzz.distance.DamerauLevenshtein import similarity
 
 
-#add fuzzy search
 #add phoneme stitching for missing words
 
 # use getStitchMap for fuzzy or strict
-# use different methods for looped llm, semantic matching, and graph decoding
+# use different methods, looped llm and graph decoding
 
 
 class Searcher:

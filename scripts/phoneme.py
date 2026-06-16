@@ -30,10 +30,10 @@ class PhonemeExtractor:
             'B': 0.5, 'D': 0.5, 'G': 0.5, 'K': 0.5, 'P': 0.4, 'T': 0.4
         }
 
-    def processArtist(self, artistName):
+    def interpolateArtist(self, artistName):
         processedDir = os.path.join(self.musicDir, "Processed2", artistName)
         manifestPath = os.path.join(processedDir, f"{artistName}Synced copy.json")
-        outputPath = os.path.join(processedDir, f"{artistName}Phonemes.json")
+        outputPath = os.path.join(processedDir, f"{artistName}Interpolated.json")
 
         if not os.path.exists(manifestPath):
             print(f"Synced manifest database missing for: {artistName}")
@@ -108,7 +108,7 @@ class PhonemeExtractor:
         except Exception as e:
             print(f"Failed to save phoneme bank for {artistName}: {e}")
 
-    def quotasFilled(self, phonemeBank):
+    def quotasFilled(self, phonemeBank): #for the basic interpolator
         return all(len(clips) >= self.target for clips in phonemeBank.values()) #returns true if all phonemes reach quota
 
 if __name__ == "__main__":

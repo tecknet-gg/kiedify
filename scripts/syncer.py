@@ -208,15 +208,7 @@ class Syncer:
         return words
 
     def cleanLyrics(self, text):
-        return (
-            text.lower()
-            .replace("’", "'")
-            .replace(",", "")
-            .replace(".", "")
-            .replace("!", "")
-            .replace("?", "")
-            .strip()
-        )
+        return re.sub(r"[^\w\s']", "", word).lower().strip()
 
 
     def chunkLyrics(self, lyrics, maxDuration=8.0):

@@ -1,5 +1,22 @@
 import os
 import json
+import re
+import inflect
+
+def cleanLyrics(lyrics):
+    text = re.sub(r'\d+', replaceNum, lyrics)
+
+    text = text.lower()
+    text = re.sub(r'[()\[\]{}.,!?;\"]', '', text)
+    text = text.replace('-',' ')
+
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def replaceNum(match):
+    p = inflect.engine()
+    return p.number_to_words(match.group(0)).replace("-", " ").strip()
+
 
 def prepareMFA(artist, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
     processedDir = os.path.join(musicDir, "Processed3", artist)
@@ -23,6 +40,7 @@ def prepareMFA(artist, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music")
             continue
 
         fullText = " ".join([word["word"] for word in wordList]).strip()
+        fullText = cleanLyrics(fullText)
 
         if not fullText:
             continue
