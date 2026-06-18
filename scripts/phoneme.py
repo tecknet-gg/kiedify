@@ -8,9 +8,11 @@ import os
 import json
 import re
 import inflect
+from pygments.lexers.sql import lookahead
 
 
 class PhonemeExtractor:
+
     def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music", mfaPath="/Users/jeevan/miniconda3/envs/mfa/bin/mfa", target=10):
         self.musicDir = musicDir
         self.mfaPath = mfaPath
@@ -155,7 +157,7 @@ class PhonemeExtractor:
         ]
 
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=myEnv)
+            result = subprocess.run(cmd, check=True, capture_output=False, text=True, env=myEnv)
             print(f"MFA alignment completed for {artistName}")
             print(result.stdout)
             return True
@@ -179,8 +181,8 @@ class PhonemeExtractor:
         p = inflect.engine()
         return p.number_to_words(match.group(0)).replace("-", " ").strip()
 
-    def prepareMFA(self, artist, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
-        processedDir = os.path.join(musicDir, "Processed3", artist)
+    def prepareMFA(self, artist):
+        processedDir = os.path.join(self.musicDir, "Processed3", artist)
         manifestPath = os.path.join(processedDir, f"{artist}Synced.json")
 
         if not os.path.exists(manifestPath):
@@ -222,8 +224,190 @@ class PhonemeExtractor:
         print(f"Staged {staged} pairs of .lab files for {artist}")
         return True
 
-if __name__ == "__main__":
-    extractor = PhonemeExtractor()
-    extractor.runMFA("Weezer")
-    extractor.runMFA("Weezer")
 
+class PhonemeNode:
+    def __init__(self, nodeId, phoneme, start, end, wordContext=""):
+        self.id = nodeId
+        self.phoneme = phoneme
+        self.start = start
+        self.end = end
+        self.wordContext = wordContext
+
+        self.edges = []
+
+    def addEdge(self, edge):
+        self.edges.append(edge)
+
+class PhonemeGraph:
+    def __init__(self):
+        self.nodes = {}
+        self.startNodes = []
+        self.endNodes = []
+
+    def addNode(self, node):
+        self.nodes[node.id] = node
+
+    def buildGraph(self, intervals, weights):
+        sortedIntervals = sorted(intervals, key=lambda x:x["start"])
+        self.nodes = {}
+        self.startNodes = []
+        self.endNodes = []
+
+        for i, interval in enumerate(sortedIntervals):
+            node = PhonemeNode(
+                nodeId=f"node_{i}",
+                phoneme=interval["phoneme"],
+                start = interval["start"],
+                end = interval["end"],
+                wordContext=interval.get("word", "")
+            )
+            self.addNode(node)
+
+        nodeList = list(self.nodes.values())
+
+        if not nodeList:
+            return
+
+        firstStart = nodeList[0].start
+
+        for i, currentNode in enumerate(nodeList):
+            if currentNode.start <= firstStart + 1.5:
+                self.startNodes.append(currentNode)
+
+            outgoing = False
+
+            lookahead = min(i+30, len(nodeList))
+            for j in range(i+1, lookahead):
+                nextNode = nodeList[j]
+
+                if nextNode.start >= currentNode.end - 0.02:
+                    timeDelta = nextNode.start - currentNode.end
+
+                    if timeDelta <= 2.0:
+                        cleanKey = "".join([character for character in nextNode.phoneme if not character.isdigit()]) #remove numbers from phonemes
+                        baseWeight = weights.get(cleanKey, 1.0)
+
+                        penalty = 0.5 if timeDelta > 0.1 else 0.0
+                        edgeWeight = max(0.1, baseWeight - penalty)
+
+                        currentNode.addEdge((nextNode, edgeWeight))
+                        outgoing = True
+                    else:
+                        continue
+
+            if not outgoing:
+                self.endNodes.append(currentNode)
+
+    def decode(self):
+
+        if not self.nodes:
+            return [], 0.0
+
+        maxWeights = {nodeId: float("-inf") for nodeId in self.nodes} #initialise with negative infinity as opposed to positive infinity in shorted dijkstras'
+        backpointers = {nodeId: None for nodeId in self.nodes}
+
+        for startNode in self.startNodes:
+            maxWeights[startNode.id] = 0.0
+
+        topologicalNodes = sorted(self.nodes.values(), key=lambda x:x.start) #sort by start time
+
+        for currentNode in topologicalNodes:
+            currentWeight = maxWeights[currentNode.id]
+            if currentWeight == float("-inf"):
+                continue
+
+            for neighbour, edgeWeight in currentNode.edges:
+                newWeight = currentWeight + edgeWeight
+                if newWeight > maxWeights[neighbour.id]:
+                    maxWeights[neighbour.id] = newWeight
+                    backpointers[neighbour.id] = currentNode.id
+
+        bestEndNode = None
+        bestTotalWeight = float("-inf")
+        for endNode in self.endNodes:
+            if maxWeights[endNode.id] > bestTotalWeight:
+                bestTotalWeight = maxWeights[endNode.id]
+                bestEndNode = endNode
+
+        if not bestEndNode:
+            return [], 0.0 #return in case of failure
+
+        decodedPath = []
+        currentId = bestEndNode.id
+        while currentId is not None:
+            decodedPath.append(self.nodes[currentId])
+            currentId = backpointers[currentId]
+
+        decodedPath.reverse()
+        return decodedPath, bestTotalWeight
+
+
+def loadIntervals(path):
+    intervals = []
+
+    if not os.path.exists(path):
+        return intervals
+
+    with open(path, "r") as f:
+        data = f.read()
+
+        sections = data.split("item [")
+        phonemeSections = None
+        for section in sections:
+            if '"phones"' in section or 'name = "phones"' in section:
+                phonemeSections = section
+                break
+
+        if not phonemeSections:
+            return intervals
+
+        pattern = re.compile(r'intervals\s*\[\d+\]:\s*xmin\s*=\s*([\d.]+)\s*xmax\s*=\s*([\d.]+)\s*text\s*=\s*"([^"]*)"')
+        matches = pattern.findall(phonemeSections)
+
+        for match in matches:
+            xmin, xmax, phoneme = float(match[0]), float(match[1]), match[2].strip().upper()
+
+            if phoneme and phoneme not in ["","sp", "sil", "spn"]:
+                intervals.append({
+                    "start": xmin,
+                    "end": xmax,
+                    "phoneme": phoneme
+                })
+        return intervals
+
+if __name__ == "__main__":
+
+    extractor = PhonemeExtractor()
+
+    target = "Weezer"
+    mfaOutput = os.path.join(extractor.musicDir, "Processed3", target, "MFA")
+
+    if os.path.exists(mfaOutput):
+        textGrid = [file for file in os.listdir(mfaOutput) if file.endswith(".TextGrid")]
+
+        if textGrid:
+            sampleFile = textGrid[0]
+            fullGridPath = os.path.join(mfaOutput, sampleFile)
+            parsedIntevrals = loadIntervals(fullGridPath)
+            print(f"Extracting phonemes from {sampleFile} for {target}.")
+
+            if parsedIntevrals:
+                phonemeGraph = PhonemeGraph()
+                phonemeGraph.buildGraph(parsedIntevrals, extractor.phonemeWeights)
+                print(f"Graph built for {target}")
+
+                optimalPath, score = phonemeGraph.decode()
+                print(f"Decoded phonemes for {target}: {optimalPath}")
+                print(f"Score: {score}")
+
+                for step in optimalPath[:15]:
+                    print(f"{step.start:.2f}s: {step.phoneme} ({step.wordContext})")
+
+                if len(optimalPath) > 15:
+                    print(f"More than 15 phonemes detected!")
+            else:
+                print(f"No phonemes found in {sampleFile} for {target}.")
+        else:
+            print(f"No TextGrid files found in {mfaOutput} for {target}.")
+    else:
+        print(f"MFA output directory not found for {target}.")
