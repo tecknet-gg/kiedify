@@ -8,7 +8,7 @@ import os
 import json
 import re
 import inflect
-from pygments.lexers.sql import lookahead
+from sympy import false
 
 
 class PhonemeExtractor:
@@ -224,15 +224,14 @@ class PhonemeExtractor:
         print(f"Staged {staged} pairs of .lab files for {artist}")
         return True
 
-
 class PhonemeNode:
-    def __init__(self, nodeId, phoneme, start, end, wordContext=""):
+    def __init__(self, nodeId, phoneme, start, end, wordContext="", songName=""):
         self.id = nodeId
         self.phoneme = phoneme
         self.start = start
         self.end = end
         self.wordContext = wordContext
-
+        self.songName = songName
         self.edges = []
 
     def addEdge(self, edge):
@@ -341,6 +340,131 @@ class PhonemeGraph:
         decodedPath.reverse()
         return decodedPath, bestTotalWeight
 
+class PhonemeSynth:
+    def __init__(self, globalNodes, weights=None):
+
+        self.globalNodes = globalNodes
+        self.g2p = G2p()
+
+        self.globalNodes = globalNodes
+        self.g2p = G2p()
+
+        self.weights = weights
+
+    def textToPhonemes(self, text):
+        output = self.g2p(text)
+        return [phoneme for phoneme in output if phoneme.isalnum()]
+
+
+    def calculateTransition(self, nodeA, nodeB):
+
+        if nodeA.songName != nodeB.songName:
+            if abs(nodeA.start - nodeB.start) < 0.02:
+                return 0.0
+        return 1.5
+
+    def calculateCost(self, node, targetPhoneme):
+        cleanNode = "".join([character for character in node.phoneme if not character.isdigit()])
+        cleanTarget - "".join([character for character in targetPhoneme if not character.isdigit()])
+
+        if cleanNode != cleanTarget:
+            return float("inf")
+
+        basePriority = self.weights.get(cleanTarget, 1.0)
+        return max(0.1, 2.0 - (basePriority * 0.5))
+
+    def generateStichMap(self, input):
+        targetSequence = self.textToPhonemes(input)
+
+        matrix = []
+        for targetPhoneme in targetSequence:
+            clean.target = "".join([character for character in targetPhoneme if not character.isdigit()])
+            candidates = [
+                node for node in self.globalNodes if "".join([character for character in node.phoneme if not character.isdigit()]) == clean.target
+            ]
+            if not candidates:
+                candidates = [node for node in self.globalNodes if node.phoneme.startswith(clean.target[0])]
+            matrix.append(candidates)
+
+        trellis = []
+        backpointers = []
+
+        firstStepCost = {id(node): self.calculateCost(node, targetSequence[0]) for node in matrix[0]}
+        firstStepPointers = {id(node): None for node in matrix[0]}
+        trellis.append(firstStepCost)
+        backpointers.append(firstStepPointers)
+
+        for t in range(1, len(targetSequence)):
+            currentCost = {}
+            currentPointers = {}
+
+            for currentNode in matrix[t]:
+                currentId = id(currentNode)
+                bestCost = float("inf")
+                bestPrevId = None
+
+                tCost = self.calculateCost(currentNode, targetSequence[t])
+
+                for prevId, prevAccumulatedCost in trellis[t-1].items():
+                    prevNode = next(node for node in matrix[t-1] if id(node) == prevId)
+                    cost = self.calculateTransition(prevNode, currentNode)
+
+                    totalCost = prevAccumulatedCost + cost + tCost
+                    if totalCost < bestCost:
+                        bestCost = totalCost
+                        bestPrevId = prevId
+
+                currentCost[currentId] = bestCost
+                currentPointers[currentId] = bestPrevId
+
+            trellis.append(currentCost)
+            backpointers.append(currentPointers)
+
+        lastLayer = trellis[-1]
+        if not lastLayer:
+            return []
+
+        winningId = min(lastLayer, key=lastLayer.get)
+        optimalNodes = []
+
+        currentTraceId = winningId
+
+        for t in revered(range(len(targetSequence))):
+            matchedNode = next(node for node in matrix[t] if id(node) == currentTraceId)
+            optimalNodes.append(matchedNode)
+            currentTraceId = backpointer[t][currentTraceId]
+
+        optimalNodes.reverse()
+
+        stitchMap = []
+        cursor = 0.0
+
+        for i, node in enumer(optimalNodes):
+            duration = node.end - node.start
+            crossfade = false
+
+            if i > 0:
+                prevNode = optimalNodes[i-1]
+                if prevNode.songName != node.songName or abs(prevNode.end - node.start) >= 0.02:
+                    crossfade = True
+
+                title = os.path.splitext(os.path.basename(node.songName))[0] if node.songName else "Unknown"
+
+                stitchInstructions = {
+                    "text": node.phoneme,
+                    "title": title,
+                    "audioPath": node.songName,
+                    "startTime": round(node.start, 4),
+                    "endTime": round(node.end, 4),
+                    "mode": "phoneme",
+                    "targetTime": round(cursor, 4),
+                    "crossfade": 0.015 if crossfade else 0.00
+                }
+
+                stitchMap.append(stitchInstructions)
+                cursor += duration - (0.015 if crossfade else 0.00)
+
+        return stitchMap
 
 def loadIntervals(path):
     intervals = []
