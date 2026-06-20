@@ -277,7 +277,7 @@ class Searcher:
 
         return results
 
-    def basicMatch(self, query, artist, mode="fuzzy"):
+    def basicMatch(self, query, artist, mode="fuzzy", rtc=True, attempts=0, maxAttempts=10, threshold=85):
 
         query = query.strip().split()
 
@@ -306,7 +306,7 @@ class Searcher:
             matchData = None
 
 
-            if mode != "fuzzy":
+            if mode == "exact":
                 matchCount, matchData = self.findLCS(remaining, tracks, threshold)
             elif mode == "fuzzy":
                 for threshold in [90, 75]:

@@ -12,10 +12,11 @@ class Router:
 
         self.extractor = PhonemeExtractor()
         self.weights = weights if weights else self.extractor.phonemeWeights
+        self.musicDir = self.extractor.musicDir
 
-        self.synth = PhonemeSynth(self.globalNodes, weights=self.weights)
-        self.stitcher = Stitcher()
-        self.searcher = Searcher()
+        self.synth = PhonemeSynth(self.musicDir, self.globalNodes, weights=self.weights)
+        self.stitcher = Stitcher(dir=self.musicDir)
+        self.searcher = Searcher(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, rtc=True):
         if fuzzy:
@@ -33,10 +34,13 @@ class Router:
         return file
 
     def phonemeMatch(self, text, artist):
-        stitchMap = self.synth.runCorpus(text)
+        stitchMap = self.synth.runCorpus(text, artist)
+        if not stitchMap:
+            print("No stitch map generated")
+            return
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
 
 if __name__ == "__main__":
     router = Router()
-    router.basicMatch("I love you", "Weezer", fuzzy=True)
+    router.phonemeMatch("hey hello how are you", "Weezer")

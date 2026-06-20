@@ -8,7 +8,6 @@ import os
 import json
 import re
 import inflect
-from sympy import false
 
 
 class PhonemeExtractor:
@@ -341,10 +340,9 @@ class PhonemeGraph:
         return decodedPath, bestTotalWeight
 
 class PhonemeSynth:
-    def __init__(self, globalNodes, weights=None):
+    def __init__(self, musicDir,  globalNodes, weights=None):
 
-        self.globalNodes = globalNodes
-        self.g2p = G2p()
+        self.musicDir = musicDir
 
         self.globalNodes = globalNodes
         self.g2p = G2p()
@@ -375,7 +373,7 @@ class PhonemeSynth:
 
     def generateStitchMap(self, input):
         targetSequence = self.textToPhonemes(input)
-
+        print(f"Generating stitch map for: {input}")
         matrix = []
         for targetPhoneme in targetSequence:
             cleanTarget = "".join([character for character in targetPhoneme if not character.isdigit()])
@@ -398,7 +396,10 @@ class PhonemeSynth:
             currentCost = {}
             currentPointers = {}
 
+            prevNodeMap = {id(node): node for node in matrix[t-1]}
+
             for currentNode in matrix[t]:
+                print(f"Current node: {currentNode.phoneme}")
                 currentId = id(currentNode)
                 bestCost = float("inf")
                 bestPrevId = None
@@ -406,7 +407,10 @@ class PhonemeSynth:
                 tCost = self.calculateCost(currentNode, targetSequence[t])
 
                 for prevId, prevAccumulatedCost in trellis[t-1].items():
-                    prevNode = next(node for node in matrix[t-1] if id(node) == prevId)
+                    prevNode = prevNodeMap[prevId]
+                    if not prevNode:
+                        continue
+
                     cost = self.calculateTransition(prevNode, currentNode)
 
                     totalCost = prevAccumulatedCost + cost + tCost
@@ -441,97 +445,110 @@ class PhonemeSynth:
 
         for i, node in enumerate(optimalNodes):
             duration = node.end - node.start
-            crossfade = false
+            crossfade = False
+
+            print(f"Node: {node.phoneme} - Duration: {duration}")
 
             if i > 0:
                 prevNode = optimalNodes[i-1]
                 if prevNode.songName != node.songName or abs(prevNode.end - node.start) >= 0.02:
                     crossfade = True
 
-                title = os.path.splitext(os.path.basename(node.songName))[0] if node.songName else "Unknown"
+            title = os.path.splitext(os.path.basename(node.songName))[0] if node.songName else "Unknown"
+            stitchInstructions = {
+                "text": node.phoneme,
+                "title": title,
+                "audioPath": node.songName,
+                "startTime": round(node.start, 4),
+                "endTime": round(node.end, 4),
+                "mode": "phoneme",
+                "targetTime": round(cursor, 4),
+                "crossfade": 0.015 if crossfade else 0.00
+            }
 
-                stitchInstructions = {
-                    "text": node.phoneme,
-                    "title": title,
-                    "audioPath": node.songName,
-                    "startTime": round(node.start, 4),
-                    "endTime": round(node.end, 4),
-                    "mode": "phoneme",
-                    "targetTime": round(cursor, 4),
-                    "crossfade": 0.015 if crossfade else 0.00
-                }
-
-                stitchMap.append(stitchInstructions)
-                cursor += duration - (0.015 if crossfade else 0.00)
-
+            stitchMap.append(stitchInstructions)
+            cursor += duration - (0.015 if crossfade else 0.00)
+        print(f"Generated stitch map for {input}")
         return stitchMap
 
-def loadIntervals(path):
-    intervals = []
+    def loadIntervals(self, path):
+        intervals = []
 
-    if not os.path.exists(path):
-        return intervals
-
-    with open(path, "r") as f:
-        data = f.read()
-
-        sections = data.split("item [")
-        phonemeSections = None
-        for section in sections:
-            if '"phones"' in section or 'name = "phones"' in section:
-                phonemeSections = section
-                break
-
-        if not phonemeSections:
+        if not os.path.exists(path):
             return intervals
 
-        pattern = re.compile(r'intervals\s*\[\d+\]:\s*xmin\s*=\s*([\d.]+)\s*xmax\s*=\s*([\d.]+)\s*text\s*=\s*"([^"]*)"')
-        matches = pattern.findall(phonemeSections)
+        with open(path, "r") as f:
+            data = f.read()
 
-        for match in matches:
-            xmin, xmax, phoneme = float(match[0]), float(match[1]), match[2].strip().upper()
+            sections = data.split("item [")
+            phonemeSections = None
+            for section in sections:
+                if '"phones"' in section or 'name = "phones"' in section:
+                    phonemeSections = section
+                    break
 
-            if phoneme and phoneme not in ["","sp", "sil", "spn"]:
-                intervals.append({
-                    "start": xmin,
-                    "end": xmax,
-                    "phoneme": phoneme
-                })
-        return intervals
+            if not phonemeSections:
+                return intervals
 
-if __name__ == "__main__":
+            pattern = re.compile(
+                r'intervals\s*\[\d+\]:\s*xmin\s*=\s*([\d.]+)\s*xmax\s*=\s*([\d.]+)\s*text\s*=\s*"([^"]*)"')
+            matches = pattern.findall(phonemeSections)
 
-    extractor = PhonemeExtractor()
+            for match in matches:
+                xmin, xmax, phoneme = float(match[0]), float(match[1]), match[2].strip().upper()
 
-    target = "Weezer"
-    mfaOutput = os.path.join(extractor.musicDir, "Processed3", target, "MFA")
+                if phoneme and phoneme not in ["", "sp", "sil", "spn"]:
+                    intervals.append({
+                        "start": xmin,
+                        "end": xmax,
+                        "phoneme": phoneme
+                    })
+            return intervals
 
-    if os.path.exists(mfaOutput):
-        textGrid = [file for file in os.listdir(mfaOutput) if file.endswith(".TextGrid")]
+    def loadCorpus(self, artistName):
+        mfaDir = os.path.join(self.musicDir, "Processed3", artistName, "MFA")
+        globalNodes = []
 
-        if textGrid:
-            sampleFile = textGrid[0]
-            fullGridPath = os.path.join(mfaOutput, sampleFile)
-            parsedIntevrals = loadIntervals(fullGridPath)
-            print(f"Extracting phonemes from {sampleFile} for {target}.")
+        if not os.path.exists(mfaDir):
+            print(f"No MFA directory found for {artistName}")
+            return globalNodes
 
-            if parsedIntevrals:
-                phonemeGraph = PhonemeGraph()
-                phonemeGraph.buildGraph(parsedIntevrals, extractor.phonemeWeights)
-                print(f"Graph built for {target}")
+        files = [file for file in os.listdir(mfaDir) if file.endswith(".TextGrid")]
 
-                optimalPath, score = phonemeGraph.decode()
-                print(f"Decoded phonemes for {target}: {optimalPath}")
-                print(f"Score: {score}")
+        nodes = 0
+        for file in files:
+            fullPath = os.path.join(mfaDir, file)
+            base, _ = os.path.splitext(file)
 
-                for step in optimalPath[:15]:
-                    print(f"{step.start:.2f}s: {step.phoneme} ({step.wordContext})")
+            audioPath = os.path.join(self.musicDir, "Processed3", artistName, f"{base}.mp3")
 
-                if len(optimalPath) > 15:
-                    print(f"More than 15 phonemes detected!")
-            else:
-                print(f"No phonemes found in {sampleFile} for {target}.")
-        else:
-            print(f"No TextGrid files found in {mfaOutput} for {target}.")
-    else:
-        print(f"MFA output directory not found for {target}.")
+            intervals = self.loadIntervals(fullPath)
+
+            for interval in intervals:
+                node = PhonemeNode(
+                    nodeId=f"{nodes}",
+                    phoneme=interval["phoneme"],
+                    start=interval["start"],
+                    end=interval["end"],
+                    wordContext=interval.get("word", ""),
+                    songName=audioPath
+                )
+                globalNodes.append(node)
+                nodes += 1
+        print(f"Loaded {nodes} nodes for {artistName}")
+        return globalNodes
+
+    def runCorpus(self, text, artist):
+        target = artist
+
+        globalDatbase = self.loadCorpus(target)
+        if not globalDatbase:
+            print("No global database found")
+            return
+
+        self.globalNodes = globalDatbase
+        stitchMap = self.generateStitchMap(text)
+        return stitchMap
+
+
+
