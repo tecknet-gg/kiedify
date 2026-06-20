@@ -365,7 +365,7 @@ class PhonemeSynth:
 
     def calculateCost(self, node, targetPhoneme):
         cleanNode = "".join([character for character in node.phoneme if not character.isdigit()])
-        cleanTarget - "".join([character for character in targetPhoneme if not character.isdigit()])
+        cleanTarget = "".join([character for character in targetPhoneme if not character.isdigit()])
 
         if cleanNode != cleanTarget:
             return float("inf")
@@ -373,17 +373,17 @@ class PhonemeSynth:
         basePriority = self.weights.get(cleanTarget, 1.0)
         return max(0.1, 2.0 - (basePriority * 0.5))
 
-    def generateStichMap(self, input):
+    def generateStitchMap(self, input):
         targetSequence = self.textToPhonemes(input)
 
         matrix = []
         for targetPhoneme in targetSequence:
-            clean.target = "".join([character for character in targetPhoneme if not character.isdigit()])
+            cleanTarget = "".join([character for character in targetPhoneme if not character.isdigit()])
             candidates = [
-                node for node in self.globalNodes if "".join([character for character in node.phoneme if not character.isdigit()]) == clean.target
+                node for node in self.globalNodes if "".join([character for character in node.phoneme if not character.isdigit()]) == cleanTarget
             ]
             if not candidates:
-                candidates = [node for node in self.globalNodes if node.phoneme.startswith(clean.target[0])]
+                candidates = [node for node in self.globalNodes if node.phoneme.startswith(cleanTarget[0])]
             matrix.append(candidates)
 
         trellis = []
@@ -429,17 +429,17 @@ class PhonemeSynth:
 
         currentTraceId = winningId
 
-        for t in revered(range(len(targetSequence))):
+        for t in reversed(range(len(targetSequence))):
             matchedNode = next(node for node in matrix[t] if id(node) == currentTraceId)
             optimalNodes.append(matchedNode)
-            currentTraceId = backpointer[t][currentTraceId]
+            currentTraceId = backpointers[t][currentTraceId]
 
         optimalNodes.reverse()
 
         stitchMap = []
         cursor = 0.0
 
-        for i, node in enumer(optimalNodes):
+        for i, node in enumerate(optimalNodes):
             duration = node.end - node.start
             crossfade = false
 

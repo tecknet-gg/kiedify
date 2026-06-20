@@ -27,6 +27,9 @@ class Stitcher:
             startTime = item.get("startTime")
             endTime = item.get("endTime")
 
+            crossfade = item.get("crossfade", 0.0)
+            crossfade = int(crossfade * 1000)
+
             if not audioPath or not os.path.exists(audioPath):
                 print(f"Skipping {text} as audioPath is missing or audio file doesn't exist")
                 continue
@@ -54,7 +57,9 @@ class Stitcher:
             if index == 0:
                 finalTrack = wordClip
             else:
-                finalTrack = finalTrack.append(wordClip,crossfade=100)
+                crossfade = min(crossfade, len(finalTrack), len(wordClip))
+                finalTrack = finalTrack.append(wordClip,crossfade=crossfade)
+
 
             print(f"Stitched {text} from {startTime} to {endTime}")
 
