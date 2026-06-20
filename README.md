@@ -7,18 +7,21 @@ Progress:
 - [x] Vocal Isolator
 - [x] Lyric Sourcing
 - [x] Word Level Syncing
-- [ ] Phoneme Level Syncing
+- [x] Phoneme Level Syncing
 - [x] Fuzzy Matching
 - [x] Greedy Maxmial Matching Algorithm for Words
-- [ ] Phoneme Level Matching Algorithm
+- [x] Phoneme Level Matching Algorithm
 - [x] Audio Stitching
-- [ ] Looped LLM (for better inputs)
-- [ ] Graph Decoder (for basic semantic preservation only)
+- [x] Semantic Matching
+- [ ] Graph Decoder (Viterbi)
+- [ ] Polish Phoneme
+- [ ] Clean Composition Methods
+- [ ] API Routing
 - [ ] Pipeline Polishing
-- [ ] API Wrapping
 - [ ] Backend Deployment
-- [ ] Neutered LLM Chatbot
 - [ ] Frontend
+
+Currently working on improving the phoneme level syncing and cleaning up the dataset by running the processed data through a transcription model for quality assurance.
 
 ## Main pipeline functions:
 
