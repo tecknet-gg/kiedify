@@ -20,7 +20,7 @@ class Router:
 
     def basicMatch(self, text, artist, fuzzy=True, rtc=True):
         if fuzzy:
-            stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy", rtc=True)
+            stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy")
         else:
             stitchMap = self.searcher.basicMatch(text, artist, mode="exact")
         file = self.stitcher.generateMP3(stitchMap)
@@ -43,4 +43,4 @@ class Router:
 
 if __name__ == "__main__":
     router = Router()
-    router.phonemeMatch("hey hello how are you", "Weezer")
+    router.basicMatch("hey guys how are we doing this fine day?", "red hot chili peppers")

@@ -277,8 +277,7 @@ class Searcher:
 
         return results
 
-    def basicMatch(self, query, artist, mode="fuzzy", rtc=True, attempts=0, maxAttempts=10, threshold=85):
-
+    def basicMatch(self, query, artist, mode="fuzzy"):
         query = query.strip().split()
 
         artistPath = os.path.join(self.processedDir, artist)

@@ -120,6 +120,7 @@ SQLAlchemy==2.0.50
 srsly==2.5.3
 submitit==1.5.4
 sympy==1.14.0
+TextGrid==1.6.1
 thinc==8.3.13
 threadpoolctl==3.6.0
 tokenizers==0.22.2
