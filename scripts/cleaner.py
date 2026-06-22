@@ -4,7 +4,7 @@ import re
 import torch
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import threading
 
 
 
@@ -17,10 +17,36 @@ class Cleaner:
         computeType = "float32" #float16 if cuda
         self.model = whisperx.load_model("large-v2", device=self.device, compute_type=computeType)
 
+        self.lock = threading.Lock()
+
     def cleanText(self, text):
         text = text.lower().strip()
         text = re.sub(r'[()\[\]{}.,!?;\"]', '', text)
         return text.replace('-', ' ')
+
+    def saveProgress(self, manifestPath, tempOutputPath, updatedTrack):
+        with self.lock:
+            try:
+                if os.path.exists(manifestPath):
+                    with open(manifestPath, "r") as f:
+                        currentTracks = json.load(f)
+                else:
+                    currentTracks = []
+
+                for i, track in enumerate(currentTracks):
+                    if track.get("title") == updatedTrack.get("title"):
+                        currentTracks[i] = updatedTrack
+                        break
+                else:
+                    currentTracks.append(updatedTrack)
+
+                with open(tempOutputPath, "w") as f:
+                    json.dump(currentTracks, f, indent=4)
+                os.replace(tempOutputPath, manifestPath)
+            except Exception as e:
+                print(f"Failed to save progress: {e}")
+                if os.path.exists(tempOutputPath):
+                    os.remove(tempOutputPath)
 
     def cleanAristCorpus(self, artist, tolerance=0.75):
 
@@ -36,6 +62,7 @@ class Cleaner:
             tracks = json.load(f)
 
         cleanedTracks = []
+        skipped = 0
         print(f"Cleaning {artist}'s corpus")
 
         for track in tracks:
@@ -47,11 +74,16 @@ class Cleaner:
                 print(f"Audio file missing for {track['title']}")
                 continue
 
+            if self.isAlreadyChecked(track):
+                print(f"Already checked {track['title']}, skipping")
+                cleanedTracks.append(track)
+                skipped += 1
+                continue
 
             print(f"Cleaning {track['title']}")
 
             audio = whisperx.load_audio(audioPath)
-            result = self.model.transcribe(audio, batch_size=16)
+            result = self.model.transcribe(audio, batch_size=16, language="en")
 
             try:
                 modelA, metadata = whisperx.load_align_model(language_code=result["language"], device=self.device)
@@ -64,10 +96,11 @@ class Cleaner:
             for segment in alignedResult["segments"]:
                 for word in segment.get("words", []):
                     if "start" in word and "end" in word:
+                        text = word.get("word") if "word" in word else word.get("text")
                         whisperWords.append({
                             "start": word["start"],
                             "end": word["end"],
-                            "word": word["word"]
+                            "word": self.cleanText(text)
                         })
 
             verifiedWords = []
@@ -99,26 +132,24 @@ class Cleaner:
 
             if verifiedWords:
                 track["words"] = verifiedWords
-                cleanedTracks.append(track)
-        try:
-            with open(tempOutputPath, "w") as f:
-                json.dump(cleanedTracks, f, indent=4)
+            else:
+                track["words"] = []
 
-            os.replace(tempOutputPath, manifestPath)
-            print(f"Synced manifest for {artist} saved")
-            return True
-        except Exception as e:
-            print(f"Failed to save synced manifest for {artist}: {e}")
-            if os.path.exists(tempOutputPath):
-                os.remove(tempOutputPath)
-            return False
+            track["verified"] = True
+            self.saveProgress(manifestPath, tempOutputPath, track)
+        print(f"Synced manifest run complete for {artist}")
+        return True
+
+    def isAlreadyChecked(self, track):
+        return track.get("verified", False) is True
+
 
     def cleanAll(self, nthreads=3):
         processedDir = os.path.join(self.musicDir, "Processed4")
         artists = [directory for directory in os.listdir(processedDir) if os.path.isdir(os.path.join(processedDir, directory))]
 
         if not artists:
-            printf(f"No artists found in {processedDir}")
+            print(f"No artists found in {processedDir}")
 
         with ThreadPoolExecutor(max_workers=nthreads) as executor:
             futureToArtist = {
