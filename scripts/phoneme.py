@@ -361,7 +361,7 @@ class PhonemeSynth:
             if 0.0 <= timeGaps <= 0.05:
                 return 0.0
 
-            if 0.05 < timeGap < 2.0:
+            if 0.05 < timeGaps < 2.0:
                 return 1.5
 
         return 3.0
@@ -434,8 +434,7 @@ class PhonemeSynth:
                 currentId = id(currentNode)
                 bestCost = float("inf")
                 bestPrevId = None
-
-                tCost = self.calculateTransition(currentNode, targetSequence[t], prevPhoneme, nextPhoneme)
+                tCost = 0.0
 
                 for prevId, prevAccumulatedCost in trellis[t-1].items():
                     prevNode = prevNodeMap[prevId]
@@ -562,7 +561,7 @@ class PhonemeSynth:
                     start=interval["start"],
                     end=interval["end"],
                     leftContext=intervals[i-1]["phoneme"] if i>0 else "SIL", # gives it context to the left, replaces with silence otherwise
-                    rightContext=intervals[i+1]["phonene"] if i<len(intervals) else "SIL", # i love ternaries
+                    rightContext=intervals[i+1]["phoneme"] if (i+1)<len(intervals) else "SIL", # i love ternaries
                     songName=audioPath
                 )
                 globalNodes.append(node)
