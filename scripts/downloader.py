@@ -11,12 +11,12 @@ from directory import DirectoryManager
 from lyrics import LyricFinder
 
 class Downloader:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
+    def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.baseURL = "https://api.deezer.com"
-        self.rawDir = os.path.join(musicDir,"Raw")
+        self.rawDir = os.path.join(dir,"Raw")
         self.config = {}
         self.installQueue = Queue()
-        self.manager = DirectoryManager(musicDir)
+        self.manager = DirectoryManager(dir)
 
         self.passed = 0
         self.failed = 0
@@ -80,7 +80,7 @@ class Downloader:
 
         return albums
 
-    def sortByRank(self, album):
+    def sortByRank(self, album): #replace with lambda function
         return album["rank"]
 
     def assembleInstallQueue(self):

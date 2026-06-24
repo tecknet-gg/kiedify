@@ -11,8 +11,8 @@ import shutil
 
 
 class LyricFinder:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
-        self.musicDir = musicDir
+    def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
+        self.musicDir = dir
         self.lyricsQueue = Queue()
 
         self.lock = threading.Lock()

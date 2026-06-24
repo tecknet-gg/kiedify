@@ -12,8 +12,8 @@ import inflect
 
 class PhonemeExtractor:
 
-    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music", mfaPath="/Users/jeevan/miniconda3/envs/mfa/bin/mfa", target=10):
-        self.musicDir = musicDir
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", mfaPath="/Users/jeevan/miniconda3/envs/mfa/bin/mfa", target=10):
+        self.musicDir = dir
         self.mfaPath = mfaPath
         self.target = target
         self.g2p = G2p()
@@ -39,7 +39,7 @@ class PhonemeExtractor:
         }
 
     def interpolateArtist(self, artistName):
-        processedDir = os.path.join(self.musicDir, "Processed2", artistName)
+        processedDir = os.path.join(self.musicDir, "Processed", artistName)
         manifestPath = os.path.join(processedDir, f"{artistName}Synced copy.json")
         outputPath = os.path.join(processedDir, f"{artistName}Interpolated.json")
 
@@ -125,7 +125,7 @@ class PhonemeExtractor:
         return env
 
     def processMFA(self, artistName):
-        processedDir = os.path.join(self.musicDir, "Processed3", artistName)
+        processedDir = os.path.join(self.musicDir, "Processed", artistName)
         mfaOutputDir = os.path.join(processedDir, "MFA")
         outputPath = os.path.join(processedDir, f"{artistName}Phonemes.json")
 
@@ -133,7 +133,7 @@ class PhonemeExtractor:
             pass
 
     def runMFA(self, artistName):
-        processedDir = os.path.join(self.musicDir, "Processed3", artistName)
+        processedDir = os.path.join(self.musicDir, "Processed", artistName)
         mfaOutputDir = os.path.join(processedDir, "MFA")
 
         if not os.path.exists(mfaOutputDir):
@@ -181,7 +181,7 @@ class PhonemeExtractor:
         return p.number_to_words(match.group(0)).replace("-", " ").strip()
 
     def prepareMFA(self, artist):
-        processedDir = os.path.join(self.musicDir, "Processed3", artist)
+        processedDir = os.path.join(self.musicDir, "Processed", artist)
         manifestPath = os.path.join(processedDir, f"{artist}Synced.json")
 
         if not os.path.exists(manifestPath):
@@ -353,7 +353,6 @@ class PhonemeSynth:
     def textToPhonemes(self, text):
         output = self.g2p(text)
         return [phoneme for phoneme in output if phoneme.isalnum()]
-
 
     def calculateTransition(self, nodeA, nodeB):
         if nodeA.songName == nodeB.songName:
@@ -538,7 +537,7 @@ class PhonemeSynth:
             return intervals
 
     def loadCorpus(self, artistName):
-        mfaDir = os.path.join(self.musicDir, "Processed3", artistName, "MFA")
+        mfaDir = os.path.join(self.musicDir, "Processed", artistName, "MFA")
         globalNodes = []
 
         if not os.path.exists(mfaDir):
@@ -552,11 +551,11 @@ class PhonemeSynth:
             fullPath = os.path.join(mfaDir, file)
             base, _ = os.path.splitext(file)
 
-            audioPath = os.path.join(self.musicDir, "Processed3", artistName, f"{base}.mp3")
+            audioPath = os.path.join(self.musicDir, "Processed", artistName, f"{base}.mp3")
 
             intervals = self.loadIntervals(fullPath)
 
-            for interval in intervals:
+            for i, interval in enumerate(intervals):
                 node = PhonemeNode(
                     nodeId=f"{nodes}",
                     phoneme=interval["phoneme"],

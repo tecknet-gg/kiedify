@@ -24,7 +24,7 @@ class Preprocessor:
         timeStart = time.perf_counter()
 
         try:
-            subprocess.run([sys.executable, "-m", "demucs", "--mp3", "--mp3-bitrate", "320", "--two-stem=vocals", "-o", outputDir, inputPath], check=True)
+            subprocess.run([sys.executable, "-m", "demucs", "--mp3", "--mp3-bitrate", "320", "--two-stem=vocals", "-o", outputDir, inputPath], check=True) #check=true raises error if goofed
         except Exception as e:
             print(e)
         timeElapsed = time.perf_counter() - timeStart

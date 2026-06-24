@@ -1,4 +1,8 @@
 import os
+from cgitb import text
+
+from matplotlib import artist
+
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -8,19 +12,20 @@ from directory import DirectoryManager
 from lyrics import LyricFinder
 
 class Router:
-    def __init__(self, globalNodes=None, weights=None):
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None):
 
         self.globalNodes = globalNodes if globalNodes else None
-        self.extractor = PhonemeExtractor()
+        self.musicDir = dir
+        self.extractor = PhonemeExtractor(self.musicDir)
         self.weights = self.extractor.phonemeWeights
-        self.musicDir = self.extractor.musicDir
 
         self.synth = PhonemeSynth(self.musicDir, self.globalNodes, weights=self.weights)
+        self.phoneme = PhonemeExtractor(dir=self.musicDir)
         self.stitcher = Stitcher(dir=self.musicDir)
         self.searcher = Searcher(dir=self.musicDir)
         self.downloader = Downloader(dir=self.musicDir)
         self.preprocessor = Preprocessor(dir=self.musicDir)
-        self.manager = DirectoryManager(musicDir=self.musicDir)
+        self.manager = DirectoryManager(dir=self.musicDir)
         self.lyrics = LyricFinder(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, rtc=True):
@@ -66,12 +71,14 @@ class Router:
         self.manager.nukeTarget("Raw")
         self.manager.nukeTarget("Processed")
 
-    def preparePhonemes(self):
-        pass
+    def stageMFA(self, artist):
+        self.phoneme.prepareMFA(artist)
 
-
-
+    def generateArist(self, artist):
+        self.phoneme.prepareMFA(artist)
+        success = self.phoneme.runMFA(artist)
+        return success
 
 if __name__ == "__main__":
     router = Router()
-    router.basicMatch("not good not good not good very not good", "weezer")
+    router.phonemeMatch("I'm a little teapot", "Weezer")

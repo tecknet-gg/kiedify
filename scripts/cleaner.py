@@ -50,7 +50,7 @@ class Cleaner:
 
     def cleanAristCorpus(self, artist, tolerance=0.75):
 
-        processedDir = os.path.join(self.musicDir, "Processed4", artist)
+        processedDir = os.path.join(self.musicDir, "Processed", artist)
         manifestPath = os.path.join(processedDir, f"{artist}.json")
         tempOutputPath = os.path.join(processedDir, f"{artist}Synced.tmp")
 
@@ -145,7 +145,7 @@ class Cleaner:
 
 
     def cleanAll(self, nthreads=3):
-        processedDir = os.path.join(self.musicDir, "Processed4")
+        processedDir = os.path.join(self.musicDir, "Processed")
         artists = [directory for directory in os.listdir(processedDir) if os.path.isdir(os.path.join(processedDir, directory))]
 
         if not artists:

@@ -9,9 +9,9 @@ import numpy as np
 
 
 class Syncer:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_960H" , device = "cpu", computeType = "int16"):
+    def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music", modelName="WAV2VEC2_ASR_LARGE_960H" , device = "cpu", computeType = "int16"):
 
-        self.musicDir = musicDir
+        self.musicDir = dir
         self.device = device
         self.modelName = modelName
         self.align, self.metadata = whisperx.load_align_model(language_code="en", device=self.device, model_name=self.modelName)
@@ -21,7 +21,7 @@ class Syncer:
 
 
     def syncAll(self):
-        processedDir = os.path.join(self.musicDir, "Processed2")
+        processedDir = os.path.join(self.musicDir, "Processed")
 
         if not os.path.exists(processedDir):
             print("Directory missing")

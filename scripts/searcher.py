@@ -19,7 +19,7 @@ from rapidfuzz.distance.DamerauLevenshtein import similarity
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
-        self.processedDir = os.path.join(self.dir, "Processed3")
+        self.processedDir = os.path.join(self.dir, "Processed")
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
@@ -33,11 +33,7 @@ class Searcher:
     def semanticMatch(self, query, artist, minmumLength=3, similarityThreshold=0.70):
         print("Performing semantic matching search")
 
-        if isinstance(query, str):
-            queryTokens = query.strip().split()
-        else:
-            queryTokens = query
-
+        queryTokens = query.strip().split()
         artistPath = os.path.join(self.processedDir, artist)
         manifestPath = os.path.join(artistPath, f"{artist}Synced.json")
 
@@ -51,7 +47,7 @@ class Searcher:
             print(f"Error loading {artist}Synced.json: {e}")
             return []
 
-        if not hasattr(self, 'nlp'):
+        if not hasattr(self, 'nlp'): #checks to see if self.nlp has been loaded previously
             import spacy
             print("Loading spacy model")
             self.nlp = spacy.load("en_core_web_md") #lazy loading
@@ -78,7 +74,7 @@ class Searcher:
                 normalisedQuery = self.semanticNormalise(querySlice)
                 queryDoc = self.nlp(normalisedQuery)
 
-                if not queryDoc.vector_norm:
+                if not queryDoc.vector_norm: #rejects it if it doesn't have a normal to it (broken or whatever)
                     continue
 
                 print(f"Current window length: {currentLength}")

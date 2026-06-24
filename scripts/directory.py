@@ -6,10 +6,10 @@ import threading
 
 
 class DirectoryManager:
-    def __init__(self, musicDir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
-        self.dir = musicDir
-        self.rawDir = os.path.join(musicDir,"Raw")
-        self.targetDir = os.path.join(musicDir, "Isolated")
+    def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
+        self.dir = dir
+        self.rawDir = os.path.join(dir,"Raw")
+        self.targetDir = os.path.join(dir, "Isolated")
         pass
 
     def cleanDownloadDir(self):

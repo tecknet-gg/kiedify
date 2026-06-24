@@ -18,7 +18,7 @@ def run():
     weights = extractor.phonemeWeights
 
 def loadCorpus(extractor, artistName):
-    mfaDir = os.path.join(extractor.musicDir, "Processed3", artistName, "MFA")
+    mfaDir = os.path.join(extractor.musicDir, "Processed", artistName, "MFA")
     globalNodes = []
 
     if not os.path.exists(mfaDir):
@@ -32,7 +32,7 @@ def loadCorpus(extractor, artistName):
         fullPath = os.path.join(mfaDir, file)
         base, _ = os.path.splitext(file)
 
-        audioPath = os.path.join(extractor.musicDir, "Processed3", artistName, f"{base}.mp3")
+        audioPath = os.path.join(extractor.musicDir, "Processed", artistName, f"{base}.mp3")
 
         intervals = loadIntervals(fullPath)
 
