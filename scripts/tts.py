@@ -2,6 +2,7 @@ import os
 import subprocess
 import glob
 import json
+import shutil
 
 class ModelGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -58,6 +59,9 @@ class ModelGenerator:
 
         manifestPath = os.path.join(inputDir, f"{artist}Synced.json")
         metadataPath = os.path.join(datasetOutput, f"metadata.csv")
+
+        datasetOutput = os.path.join(datasetOutput, f"wavs")
+        os.makedirs(datasetOutput, exist_ok=True)
 
         if not os.path.exists(manifestPath):
             print(f"Manifest missing for {artist}")
@@ -135,84 +139,17 @@ class ModelGenerator:
             return False
 
 
-    def generateModel(self, artist, epochs=50, modelName=None, rvcRoot=None):
-        if not modelName:
-            modelName = f"{artist}"
-        if not rvcRoot:
-            dir = os.path.dirname(self.dir)
-            rvcRoot = os.path.join(dir, "Applio")
-
-        datasetFolder = os.path.join(self.dir, "Dataset", artist)
-        expDir = os.path.join(rvcRoot, "logs", modelName)
-        os.makedirs(expDir, exist_ok=True)
-
-        print(f"Starting RVC training for {artist} with {epochs} epochs")
-
-        print(f"Running preprocessing")
-
-        preprocessCmd = [
-            "python", os.path.join(rvcRoot, "rvc/train/preprocess/preprocess.py"), #/Users/jeevan/Documents/Python/MusicTTS/Applio/rvc/train/preprocess/preprocess.py
-            datasetFolder,
-            "40000", #sample rate
-            "6", #cpu threads
-            expDir,
-            "False" #clean audio gain flag
-        ]
-
-        try:
-            subprocess.run(preprocessCmd, check=True, cwd=rvcRoot)
-            print(f"Preprocessing complete for {artist}")
-        except subprocess.CalledProcessError as e:
-            print(f"Preprocessing failed for {artist}: {e}")
-            return False
-
-        print(f"Running pitch extraction")
-        extractionCmd = [
-            "python", os.path.join(rvcRoot, "rvc/train/extract/extract.py"),
-            expDir,
-            "6",
-            "rmvpe" #retina multi variable pitch extraction
-        ]
-        try:
-            subprocess.run(extractionCmd, check=True, cwd=rvcRoot)
-            print(f"Extraction complete for {artist}")
-        except subprocess.CalledProcessError as e:
-            print(f"Extraction failed for {artist}: {e}")
-            return False
-
-        print(f"Training model")
-
-        trainCmd = [
-            "python", os.path.join(rvcRoot, "rvc/train/train.py"),
-            "-e", modelName,
-            "-sr", "40k",
-            "-f0", "1",
-            "-ep,", str(epochs),
-            "-b", "16", #batch size
-            "-g", "0",
-            "-p", "True", #save weights
-            "-v", "v2" #literally just v2
-        ]
-
-        try:
-            subprocess.run(trainCmd, check=True, cwd=rvcRoot)
-            print(f"Training complete for {artist}")
-        except subprocess.CalledProcessError as e:
-            print(f"Training failed for {artist}: {e}")
-            return False
-
 
 
 if __name__ == "__main__":
     generator = ModelGenerator()
     #artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
-    #for artist in artists:
-        #generator.generateDataset(artist)
-
-    generator.generateModel("Weezer", epochs=10, rvcRoot="/Users/jeevan/Documents/Python/MusicTTS/Applio")
-
+    artists = ["Weezer"]
+    for artist in artists:
+        generator.generateDataset(artist)
 
 
 
 
-        
+
+
