@@ -13,9 +13,11 @@ Progress:
 - [x] Phoneme Level Matching Algorithm
 - [x] Audio Stitching
 - [x] Semantic Matching
-- [ ] Graph Decoder (Viterbi)
-- [ ] Polish Phoneme
-- [ ] Clean Composition Methods
+- [x] Graph Decoder (Viterbi) - abandoned
+- [x] Polish Phoneme - abandoned
+- [x] Clean Composition Methods
+- [x] PiperTTS Dataset Preparation
+- [ ] PiperTTS Model Training 
 - [ ] API Routing
 - [ ] Pipeline Polishing
 - [ ] Backend Deployment
