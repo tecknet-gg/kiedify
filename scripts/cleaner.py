@@ -141,7 +141,8 @@ class Cleaner:
         return True
 
     def isAlreadyChecked(self, track):
-        return track.get("verified", False) is True
+        return track.get("verified", False)
+
 
 
     def cleanAll(self, nthreads=3):

@@ -1,6 +1,7 @@
 import os
 import subprocess
 import glob
+import json
 
 class ModelGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -14,7 +15,7 @@ class ModelGenerator:
     def cleanText(self, text):
         return text
 
-    def convertToWAV(self, audioPath, outputPath=self.tmpDir, sampleRate=44100):
+    def convertToWAV(self, audioPath, outputPath, sampleRate=44100):
         print(f"Converting {audioPath} to WAV")
         cmd = [
             "ffmpeg", "-y", "-i", audioPath, "-ac", "1", "-ar", str(sampleRate), "-f", "wav", outputPath
@@ -35,11 +36,11 @@ class ModelGenerator:
             "ffmpeg", "-y",
             "-ss", f"{start:.4f}",
             "-t", f"{duration:.4f}",
-            "-i", inputAudio,
+            "-i", audioPath,
             "-ac", "1",
             "-ar", "22050",
             "-c:a", "pcm_s16le",
-            outputWavPath
+            outputPath
         ]
 
         try:
@@ -52,10 +53,10 @@ class ModelGenerator:
 
     def generateDataset(self, artist, segmentLength=10.0):
         inputDir = os.path.join(self.dir, "Processed", artist)
-        datasetOutput = os.path.join(self.dir, "Dataset", artist, "wavs")
+        datasetOutput = os.path.join(self.dir, "Dataset", artist)
         os.makedirs(datasetOutput, exist_ok=True)
 
-        manifestPath = os.path.join(inputDir, f"{artist}.json")
+        manifestPath = os.path.join(inputDir, f"{artist}Synced.json")
         metadataPath = os.path.join(datasetOutput, f"metadata.csv")
 
         if not os.path.exists(manifestPath):
@@ -93,6 +94,7 @@ class ModelGenerator:
 
                 currentGroup.append(word)
                 currentDuration = word["end"] - groupStart
+                isLastWord = False
 
                 if i == len(words)-1:
                     isLastWord = True
@@ -108,7 +110,7 @@ class ModelGenerator:
                     groupEnd = float(currentGroup[-1]["end"])
 
                     phraseText = " ".join([word["word"] for word in currentGroup])
-                    phrasetext = self.cleanText(phraseText)
+                    phraseText = self.cleanText(phraseText)
 
                     sliceName = f"slice_{sliceCounter:06d}.wav"
                     slicePath = os.path.join(datasetOutput, sliceName)
@@ -116,23 +118,98 @@ class ModelGenerator:
                     success = self.sliceWAV(audioPath, groupStart, groupEnd, slicePath)
                     if success:
                         print(f"Sliced {title} into {sliceName}")
-                        metadata_entries.append(f"slice_{slice_counter:06d}|{phrase_text}")
+                        metadataEntries.append(f"slice_{sliceCounter:06d}|{phraseText}")
                         sliceCounter += 1
 
                     currentGroup = []
                     groupStart = None
 
-            if metadataEntries:
-                with open(metadataPath, "w", encoding="utf-8") as file:
-                    for entry in metadataEntries:
-                        file.write(entry + "\n")
-                    print(f"Wrote metadata for {artist} to {metadataPath}")
-                    return True
-            else:
-                print(f"No valid segments found for {artist}")
-                return False
+        if metadataEntries:
+            with open(metadataPath, "w", encoding="utf-8") as file:
+                for entry in metadataEntries:
+                    file.write(entry + "\n")
+                print(f"Wrote metadata for {artist} to {metadataPath}")
+                return True
+        else:
+            print(f"No valid segments found for {artist}")
+            return False
 
 
+    def generateModel(self, artist, epochs=50, modelName=None, rvcRoot=None):
+        if not modelName:
+            modelName = f"{artist}"
+        if not rvcRoot:
+            dir = os.path.dirname(self.dir)
+            rvcRoot = os.path.join(dir, "Applio")
+
+        datasetFolder = os.path.join(self.dir, "Dataset", artist)
+        expDir = os.path.join(rvcRoot, "logs", modelName)
+        os.makedirs(expDir, exist_ok=True)
+
+        print(f"Starting RVC training for {artist} with {epochs} epochs")
+
+        print(f"Running preprocessing")
+
+        preprocessCmd = [
+            "python", os.path.join(rvcRoot, "rvc/train/preprocess/preprocess.py"), #/Users/jeevan/Documents/Python/MusicTTS/Applio/rvc/train/preprocess/preprocess.py
+            datasetFolder,
+            "40000", #sample rate
+            "6", #cpu threads
+            expDir,
+            "False" #clean audio gain flag
+        ]
+
+        try:
+            subprocess.run(preprocessCmd, check=True, cwd=rvcRoot)
+            print(f"Preprocessing complete for {artist}")
+        except subprocess.CalledProcessError as e:
+            print(f"Preprocessing failed for {artist}: {e}")
+            return False
+
+        print(f"Running pitch extraction")
+        extractionCmd = [
+            "python", os.path.join(rvcRoot, "rvc/train/extract/extract.py"),
+            expDir,
+            "6",
+            "rmvpe" #retina multi variable pitch extraction
+        ]
+        try:
+            subprocess.run(extractionCmd, check=True, cwd=rvcRoot)
+            print(f"Extraction complete for {artist}")
+        except subprocess.CalledProcessError as e:
+            print(f"Extraction failed for {artist}: {e}")
+            return False
+
+        print(f"Training model")
+
+        trainCmd = [
+            "python", os.path.join(rvcRoot, "rvc/train/train.py"),
+            "-e", modelName,
+            "-sr", "40k",
+            "-f0", "1",
+            "-ep,", str(epochs),
+            "-b", "16", #batch size
+            "-g", "0",
+            "-p", "True", #save weights
+            "-v", "v2" #literally just v2
+        ]
+
+        try:
+            subprocess.run(trainCmd, check=True, cwd=rvcRoot)
+            print(f"Training complete for {artist}")
+        except subprocess.CalledProcessError as e:
+            print(f"Training failed for {artist}: {e}")
+            return False
+
+
+
+if __name__ == "__main__":
+    generator = ModelGenerator()
+    #artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
+    #for artist in artists:
+        #generator.generateDataset(artist)
+
+    generator.generateModel("Weezer", epochs=10, rvcRoot="/Users/jeevan/Documents/Python/MusicTTS/Applio")
 
 
 
