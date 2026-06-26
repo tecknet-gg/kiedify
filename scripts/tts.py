@@ -138,6 +138,52 @@ class ModelGenerator:
             print(f"No valid segments found for {artist}")
             return False
 
+    def generateModel(self, artist,epochs=5000,  modelName=None):
+        datasetOutput = os.path.join(self.dir, "Dataset", artist)
+        outputDir = os.path.join(self.dir, "models", artist)
+        modelName = modelName or f"{artist}"
+
+        os.makedirs(outputDir, exist_ok=True)
+        print(f"Generating model for {artist}")
+
+        trainCmd = [
+            "python3", "-m", "piper_train",
+            "--dataset-dir", datasetDir,
+            "--output-dir", outputDir,
+            "--epochs", str(epochs),
+        ]
+
+        try:
+            subprocess.run(trainCmd, check=True)
+            print(f"Training complete for {artist}")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to train {artist}: {e}")
+            return False
+
+        print("Looking for checkpoints")
+        checkpoints = glob.glob(os.path.join(outputDir, "*.ckpt"))
+        if not checkpoints:
+            print(f"No checkpoints found for {artist}")
+            return False
+
+        latestCheckpoint = max(checkpoints, key=os.path.getctime)
+        print(f"Using checkpoint: {latestCheckpoint}")
+
+        print(f"Exporting model for {artist} to ONNX")
+
+        exportCmd = [
+            "python3", "-m", "piper_trian.export_onnx",
+            "--checkpoint", latestCheckpoint,
+            "--output-dir", outputDir
+        ]
+
+        try:
+            subprocess.run(exportCmd, check=True)
+            print(f"Exported ONNX model for {artist}")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to export ONNX for {artist}: {e}")
+            return False
 
 
 
@@ -147,6 +193,8 @@ if __name__ == "__main__":
     artists = ["Weezer"]
     for artist in artists:
         generator.generateDataset(artist)
+
+    generator.generateModel(artists[0])
 
 
 
