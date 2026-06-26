@@ -138,8 +138,9 @@ class ModelGenerator:
             print(f"No valid segments found for {artist}")
             return False
 
+    '''
     def generateModel(self, artist,epochs=5000,  modelName=None):
-        datasetOutput = os.path.join(self.dir, "Dataset", artist)
+        datasetDir = os.path.join(self.dir, "Dataset", artist)
         outputDir = os.path.join(self.dir, "models", artist)
         modelName = modelName or f"{artist}"
 
@@ -184,17 +185,16 @@ class ModelGenerator:
         except subprocess.CalledProcessError as e:
             print(f"Failed to export ONNX for {artist}: {e}")
             return False
-
+    '''
 
 
 if __name__ == "__main__":
     generator = ModelGenerator()
-    #artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
-    artists = ["Weezer"]
+    artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
+
     for artist in artists:
         generator.generateDataset(artist)
 
-    generator.generateModel(artists[0])
 
 
 
