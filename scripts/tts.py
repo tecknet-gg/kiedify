@@ -1,8 +1,11 @@
+import csv
 import os
 import subprocess
 import glob
 import json
 import shutil
+import random
+import wave
 
 class ModelGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -187,13 +190,66 @@ class ModelGenerator:
             return False
     '''
 
+    def pruneDataset(self, artist, target=5): #total in hours
+        metadataPath = os.path.join(self.dir, "Dataset", artist, "metadata.csv")
+        wavDir = os.path.join(self.dir, "Dataset", artist, "wavs")
+
+        if not os.path.exists(metadataPath):
+            print(f"Metadata missing for {artist}")
+            return False
+
+        with open(metadataPath, "r", encoding="utf-8") as file:
+            reader = csv.reader(file, delimiter="|")
+            rows = list(reader)
+
+        random.shuffle(rows)
+
+        selectedRows = []
+        totalDuration = 0
+        targetSeconds = target * 3600
+
+        for row in rows:
+            if totalDuration >= targetSeconds:
+                break
+
+            fileId = row[0]
+
+            if not fileId.endswith(".wav"):
+                wavPath = os.path.join(wavDir, f"{fileId}.wav")
+            else:
+                wavPath = os.path.join(wavDir, fileId)
+
+            if os.path.exists(wavPath):
+                try:
+                    with wave.open(wavPath, "rb") as wavFile:
+                        frames = wavFile.getnframes()
+                        rate = wavFile.getframerate()
+                        duration = frames / float(rate)
+
+                    totalDuration += duration
+                    selectedRows.append(row)
+
+                except Exception as e:
+                    print(f"Failed to read {wavPath}: {e}")
+
+        with open(metadataPath, "w", encoding="utf-8") as file:
+            writer = csv.writer(file, delimiter="|")
+            writer.writerows(selectedRows)
+
+        actualHours = totalDuration / 3600
+        print(f"Pruned {artist} dataset to {len(selectedRows)} rows ({actualHours:.2f} hours)")
+        return True
+
 
 if __name__ == "__main__":
     generator = ModelGenerator()
     artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
 
+    #for artist in artists:
+        #generator.generateDataset(artist)
+
     for artist in artists:
-        generator.generateDataset(artist)
+        generator.pruneDataset(artist)
 
 
 
