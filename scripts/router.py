@@ -1,8 +1,5 @@
 import os
 from cgitb import text
-
-from matplotlib import artist
-
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -74,11 +71,11 @@ class Router:
     def stageMFA(self, artist):
         self.phoneme.prepareMFA(artist)
 
-    def generateArist(self, artist):
+    def generateArtist(self, artist):
         self.phoneme.prepareMFA(artist)
         success = self.phoneme.runMFA(artist)
         return success
 
 if __name__ == "__main__":
     router = Router()
-    router.phonemeMatch("I'm a little teapot", "Weezer")
+    router.basicMatch("I'm a little teapot", "Weezer")
