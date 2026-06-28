@@ -9,13 +9,6 @@ import pydub
 from pydub import AudioSegment
 from rapidfuzz.distance.DamerauLevenshtein import similarity
 
-
-#add phoneme stitching for missing words
-
-# use getStitchMap for fuzzy or strict
-# use different methods, looped llm and graph decoding
-
-
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
@@ -273,7 +266,7 @@ class Searcher:
 
         return results
 
-    def basicMatch(self, query, artist, mode="fuzzy"):
+    def basicMatch(self, query, artist, mode="fuzzy", patching=True, rtc=True):
         query = query.strip().split()
 
         artistPath = os.path.join(self.processedDir, artist)

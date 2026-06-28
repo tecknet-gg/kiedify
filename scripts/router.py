@@ -78,4 +78,4 @@ class Router:
 
 if __name__ == "__main__":
     router = Router()
-    router.basicMatch("I'm a little teapot", "Weezer")
+    router.semanticMatch(f"{str(input('Enter the text: '))}", f"{str(input('Enter the artist: '))}")
