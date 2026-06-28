@@ -210,7 +210,7 @@ class ModelGenerator:
         for gender, assets in targets.items():
             os.makedirs(assets["dir"], exist_ok=True)
             localConfig = os.path.join(assets["dir"], "config.json")
-            localCpkt = os.path.join(assets["dir"], "model.cpkt")
+            localCpkt = os.path.join(assets["dir"], "base.cpkt")
 
             if not os.path.exists(localConfig):
                 print(f"Downloading {gender} to {localConfig}")
@@ -231,13 +231,45 @@ class ModelGenerator:
 
 
 
-    def generateModel(self, artist, epochs=10000, batchSize=32, resume=True, explicitCheckpoint=False):
+    def generateModel(self, artist, gender,  epochs=10000, batchSize=32, resume=True, explicitCheckpoint=False):
         artistPath = os.path.join(self.dir, "Dataset", artist)
         configOutputPath = os.path.join(artistPath, "config.json")
 
+        if gender not in ["male", "female"]:
+            return
+
+        baseCheckpoint = os.path.join(self.dir, "models", f"{gender}", "base.cpkt")
+
+        datasetJsonlPath = os.path.join(artistPath, "dataset.jsonl")
+
+        if not os.path.exists(datasetJsonlPath):
+            print(f"Mising JSONL file for {artist}, running preprocesser")
+            preprocessCmd = [
+                "python3", "-m", "piper_train.preprocess",
+                "--language", "en_US",
+                "--input-dir", artistPath,
+                "--output-dir", artistPath,
+                "--dataset-format", "ljspeech",
+                "--single-speaker",
+                "--sample-rate", "22050"
+            ]
+
+            try:
+                subprocess.run(preprocessCmd)
+                print("Successfully preprocessed {artist}")
+            except Exception as e:
+                print(f"Failed to preprocess: {e}")
+                return False
+        else:
+            print(f"JSONL exists for {artist}, skipping")
+
+
+
+
+
         if not os.path.exists(configOutputPath):
             modelPath = os.path.join(self.dir, "models")
-            jsonFiles = glob.glob(os.path.join(modelsDir, "*.json"))
+            jsonFiles = glob.glob(os.path.join(modelPath, gender ,"*.json"))
 
             if jsonFiles:
                 baseJsonPath = jsonFiles[0]
@@ -246,10 +278,6 @@ class ModelGenerator:
             else:
                 print("No config.json found")
                 return False
-
-
-
-
 
         cmd = [
             "python3", "-m", "piper_train",
@@ -280,18 +308,25 @@ class ModelGenerator:
             else:
                 print(f"No checkpoint found for {artist}")
 
-            if checkpoint:
-                cmd.extend(["--checkpoint", checkpoint]) #add checkpoint to resume from
+        if not checkpoint and os.path.exists(baseCheckpoint):
+            checkpoint = baseCheckpoint
+            print(f"Starting from base checkpoint {baseCheckpoint}")
+        elif not checkpoint:
+            print(f"Missing basess, run downloadBases first.")
+            return False
 
-            print(f"Beginning training for {artist}")
+        if checkpoint:
+            cmd.extend(["--resume_from_checkpoint", checkpoint]) #add checkpoint to resume from
 
-            try:
-                subprocess.run(cmd, check=True)
-                print(f"Training complete for {artist}")
-                return True
-            except Exception as e:
-                print(f"Failed to train {artist}: {e}")
-                return False
+        print(f"Beginning training for {artist}")
+
+        try:
+            subprocess.run(cmd, check=True)
+            print(f"Training complete for {artist}")
+            return True
+        except Exception as e:
+            print(f"Failed to train {artist}: {e}")
+            return False
 
 
 
@@ -306,7 +341,7 @@ if __name__ == "__main__":
         #generator.pruneDataset(artist)
 
     generator.downloadBases()
-    #generator.generateModel(artists[0], resume=True)
+    generator.generateModel(artists[0],gender="male", resume=True)
 
 
 
