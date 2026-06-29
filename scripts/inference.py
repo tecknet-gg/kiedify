@@ -1,6 +1,11 @@
 import sys
 import os
 import glob
+from piper import PiperVoice
+import wave
+import subprocess
+
+from piper.notebooks.piper_multilingual_training_notebook import output_path
 
 
 class Inference:
@@ -39,19 +44,69 @@ class Inference:
         return self.index
 
 
-
-
     def synthesise(self, text, artist, fileName="output", modelPath=None):
+        artistKey = artist.lower()
+
         if modelPath is None:
-            self.index[artist][1]
+            if artistKey not in self.index:
+                print(f"No model found for {artistKey}")
+                return False
+            onnxPath = self.index[artistKey]["onnx"]
+            jsonPath = self.index[artistKey]["json"]
+        else:
+            onnxPath = modelPath
+            jsonPath = f"{modelPath}.json"
 
-        outputWav = f"{artist}.wav"
-        outputPath = os.join(self.dir, Stitched, outputWav)
+        stitchedDir = os.path.join(self.dir, "Stitched")
+        os.makedirs(stitchedDir, exist_ok=True)
 
-        with wave.open(outputPath, "wb") as output:
-            self.voice.synthesize(text, output)
+        wavPath = os.path.join(stitchedDir, f"{fileName}.wav")
+        mp3Path = os.path.join(stitchedDir, f"{fileName}.mp3")
 
-        #convert to mp3
+        print(f"Generating audio from {text} to {wavPath}")
+
+        print(f"Loading piper voice from {onnxPath}")
+        try:
+            voice = PiperVoice.load(onnxPath, config_path=jsonPath)
+            print(f"Successfully loaded {onnxPath}")
+        except Exception as e:
+            print(f"Failed to load {onnxPath}")
+
+        print(f"Generating audio from {text} to {wavPath}")
+        try:
+            with wave.open(wavPath, "wb") as wav:
+                voice.synthesize_wav(text, wav)
+            print(f"Successfully generated {wavPath}")
+        except Exception as e:
+            print(f"Failed to synthesize {text} to {wavPath}")
+            print(e)
+            if os.path.exists(wavPath):
+                os.remove(wavPath)
+
+        final = self.convertToMP3(wavPath, mp3Path)
+
+    def convertToMP3(self, inputWav, outputMP3, delete=True):
+        print(f"Converting {inputWav} to {outputMP3}")
+
+        ffmpegCmd = [
+            "ffmpeg", "-y",
+            "-i", inputWav,
+            "-codec:a", "libmp3lame",
+            "-q:a", "2",
+            outputMP3,
+        ]
+
+        try:
+            subprocess.run(ffmpegCmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Successfully converted {path} to mp3")
+            if delete and os.path.exists(inputWav):
+                os.remove(inputWav)
+                print(f"Cleaned up temporary file {inputWav}")
+            return finalPath
+        except Exception as e:
+            print(f"Failed to convert {path} to mp3")
+            print(e)
+            return False
 
 if __name__ == "__main__":
     inference = Inference()
