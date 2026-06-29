@@ -198,12 +198,12 @@ class ModelGenerator:
             "male": {
                 "dir": os.path.join(root, "male"),
                 "config": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/resolve/main/en/en_US/hfc_male/medium/config.json",
-                "ckpt": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/blob/main/en/en_US/hfc_male/medium/epoch%3D2785-step%3D2128064.ckpt"
+                "ckpt": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/resolve/main/en/en_US/hfc_male/medium/epoch%3D2785-step%3D2128064.ckpt"
             },
             "female": {
                 "dir": os.path.join(root, "female"),
                 "config": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/resolve/main/en/en_US/hfc_female/medium/config.json",
-                "ckpt": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/blob/main/en/en_US/hfc_female/medium/epoch%3D2868-step%3D1575188.ckpt"
+                "ckpt": "https://huggingface.co/datasets/rhasspy/piper-checkpoints/resolve/main/en/en_US/hfc_female/medium/epoch%3D2868-step%3D1575188.ckpt"
             }
         }
 
@@ -229,7 +229,31 @@ class ModelGenerator:
                     print(f"Failed to download {gender}: {e}")
         print("Done")
 
+    def generateJsonl(self, artist):
 
+        artistPath = os.path.join(self.dir, "Dataset", artist)
+        os.makedirs(artistPath, exist_ok=True)
+
+        datasetJsonlPath = os.path.join(artistPath, "dataset.jsonl")
+
+        print(f"Generating {artist} dataset.jsonl")
+        preprocessCmd = [
+            "python3", "-m", "piper_train.preprocess",
+            "--language", "en-us",
+            "--input-dir", artistPath,
+            "--output-dir", artistPath,
+            "--dataset-format", "ljspeech",
+            "--single-speaker",
+            "--sample-rate", "22050"
+        ]
+
+        try:
+            subprocess.run(preprocessCmd, check=True)
+            print("Successfully preprocessed {artist}")
+            return True
+        except Exception as e:
+            print(f"Failed to preprocess: {e}")
+            return False
 
     def generateModel(self, artist, gender,  epochs=10000, batchSize=32, resume=True, explicitCheckpoint=False):
         artistPath = os.path.join(self.dir, "Dataset", artist)
@@ -239,32 +263,6 @@ class ModelGenerator:
             return
 
         baseCheckpoint = os.path.join(self.dir, "models", f"{gender}", "base.cpkt")
-
-        datasetJsonlPath = os.path.join(artistPath, "dataset.jsonl")
-
-        if not os.path.exists(datasetJsonlPath):
-            print(f"Mising JSONL file for {artist}, running preprocesser")
-            preprocessCmd = [
-                "python3", "-m", "piper_train.preprocess",
-                "--language", "en_US",
-                "--input-dir", artistPath,
-                "--output-dir", artistPath,
-                "--dataset-format", "ljspeech",
-                "--single-speaker",
-                "--sample-rate", "22050"
-            ]
-
-            try:
-                subprocess.run(preprocessCmd)
-                print("Successfully preprocessed {artist}")
-            except Exception as e:
-                print(f"Failed to preprocess: {e}")
-                return False
-        else:
-            print(f"JSONL exists for {artist}, skipping")
-
-
-
 
 
         if not os.path.exists(configOutputPath):
@@ -340,8 +338,9 @@ if __name__ == "__main__":
     #for artist in artists:
         #generator.pruneDataset(artist)
 
-    generator.downloadBases()
-    generator.generateModel(artists[0],gender="male", resume=True)
+    #generator.downloadBases()
+    generator.generateJsonl(artists[0])
+    #generator.generateModel(artists[0],gender="male", resume=True)
 
 
 
