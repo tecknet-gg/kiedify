@@ -290,7 +290,7 @@ class ModelGenerator:
             "--validation-split", "0.05",
             "--num-test-examples", "0",
             "--max_epochs", str(epochs),
-            "--checkpoint-epochs", str(50),
+            "--checkpoint-epochs", str(1),
             "--precision", "32"
         ]
 
@@ -329,6 +329,10 @@ class ModelGenerator:
         except Exception as e:
             print(f"Failed to train {artist}: {e}")
             return False
+
+    def exportModels(self):
+        #crawl directory for onnx and onnx.json and move it to models.
+        pass
 
 
 
