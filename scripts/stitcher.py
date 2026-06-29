@@ -16,7 +16,7 @@ class Stitcher:
         if not os.path.exists(self.savePath):
             os.makedirs(self.savePath)
 
-    def generateMP3(self, stitchInstructions, filename="output.mp3", wordGap=200 ): #word gap in ms
+    def generateMP3(self, stitchInstructions, filename="output", wordGap=200 ): #word gap in ms
         finalTrack = AudioSegment.empty()
         audioCache = {}
         separator = AudioSegment.silent(duration=wordGap)
@@ -49,7 +49,7 @@ class Stitcher:
 
             wordClip = source[start:end]
             wordClip = normalize(wordClip, headroom=1.0)
-            wordClip = self.stretchClip(wordClip, 350)
+            #wordClip = self.stretchClip(wordClip, 350)
 
             if len(wordClip) > 40:
                 wordClip = wordClip.fade_in(20).fade_out(20)
@@ -63,7 +63,7 @@ class Stitcher:
 
             print(f"Stitched {text} from {startTime} to {endTime}")
 
-        finalDestination = os.path.join(self.savePath, filename)
+        finalDestination = os.path.join(self.savePath, f"{filename}.mp3")
 
         try:
             print(f"Saving to {finalDestination}")
