@@ -262,6 +262,10 @@ class ModelGenerator:
         if gender not in ["male", "female"]:
             return
 
+        datasetJsonlPath = os.path.join(artistPath, "dataset.jsonl")
+        if not os.path.exists(datasetJsonlPath):
+            self.generateJsonl(artist)
+
         baseCheckpoint = os.path.join(self.dir, "models", f"{gender}", "base.cpkt")
 
 
@@ -338,9 +342,8 @@ if __name__ == "__main__":
     #for artist in artists:
         #generator.pruneDataset(artist)
 
-    #generator.downloadBases()
-    generator.generateJsonl(artists[0])
-    #generator.generateModel(artists[0],gender="male", resume=True)
+    #generator.downloadBases(artists[0])
+    generator.generateModel(artists[0],gender="male", resume=True)
 
 
 
