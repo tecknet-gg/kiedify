@@ -323,16 +323,71 @@ class ModelGenerator:
         print(f"Beginning training for {artist}")
 
         try:
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             print(f"Training complete for {artist}")
             return True
         except Exception as e:
             print(f"Failed to train {artist}: {e}")
             return False
 
-    def exportModels(self):
-        #crawl directory for onnx and onnx.json and move it to models.
-        pass
+    def exportModel(self, artist):
+        artistDataset = os.path.join(self.dir, "Dataset", artist)
+        artistModelPath = os.path.join(self.dir, "models", artist)
+
+        chkptPattern = os.path.join(artistDataset, "lightning_logs", "**", "checkpoints", "*.ckpt")
+        checkpoints = glob.glob(chkptPattern, recursive=True)
+
+        if not checkpoints:
+            print(f"No checkpoints found for {artist}")
+            return False
+
+        largest = max(checkpoints, key=os.path.getsize) #choose largest checkpoint
+
+        os.makedirs(artistModelPath, exist_ok=True)
+        onnxName = f"en_US-{artist.lower()}-medium.onnx"
+
+        onnxPath = os.path.join(artistModelPath, onnxName)
+        onnxJsonPath = f"{onnxPath}.json"
+
+        sourceConfig = os.path.join(artistDataset, "config.json")
+
+        print(f"Exporting {artist} model to {onnxPath}")
+
+        import torch
+        import pathlib
+        import sys
+
+        try:
+            torch.serialization.add_safe_globals([pathlib.PosixPath])
+            original = torch.onnx.export
+            def patch(*args, **kwargs):
+                kwargs["dynamo"] = False
+                return original(*args, **kwargs)
+            torch.onnx.export = patch
+            import piper_train.export_onnx as exp
+
+            originalArgv = sys.argv.copy()
+            sys.argv = ["export_onnx", largest, onnxPath]
+
+            try:
+                exp.main()
+            except Exception as e:
+                print(f"Failed to export {artist}: {e}")
+
+            sys.argv = originalArgv
+            print(f"Exported {artist} to {onnxPath}")
+
+            if os.path.exists(sourceConfig):
+                shutil.copyfile(sourceConfig, onnxJsonPath)
+                print(f"Exported {artist} to {onnxJsonPath}")
+            else:
+                print(f"Missing config.json")
+
+            return True
+        except Exception as e:
+            print(f"Failed to export {artist}: {e}")
+            return False
+
 
 
 
@@ -347,8 +402,9 @@ if __name__ == "__main__":
         #generator.pruneDataset(artist)
 
     #generator.downloadBases(artists[0])
-    generator.generateModel(artists[0],gender="male", resume=True)
+    #generator.generateModel(artists[0],gender="male", resume=True)
 
+    generator.exportModel(artists[0])
 
 
 
