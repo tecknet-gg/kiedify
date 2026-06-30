@@ -17,7 +17,11 @@ Progress:
 - [x] Polish Phoneme - abandoned
 - [x] Clean Composition Methods
 - [x] PiperTTS Dataset Preparation
-- [ ] PiperTTS Model Training 
+- [x] PiperTTS Model Training
+- [x] PiperTTS Inference
+- [ ] RVC Model Training
+- [ ] RVC Inference
+- [ ] Reverse Transcription Checks (Using Cloud Models)
 - [ ] API Routing
 - [ ] Pipeline Polishing
 - [ ] Backend Deployment
