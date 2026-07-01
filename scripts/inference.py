@@ -5,10 +5,8 @@ from piper import PiperVoice
 import wave
 import subprocess
 
-from piper.notebooks.piper_multilingual_training_notebook import output_path
 
-
-class Inference:
+class TTS:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
         self.modelsDir = os.path.join(self.dir, "models")
@@ -23,7 +21,7 @@ class Inference:
             print(f"Directory {self.modelsDir} doesn't exist")
             return
 
-        onnxPattern = os.path.join(self.modelsDir, "*.onnx")
+        onnxPattern = os.path.join(self.modelsDir, "**", "*.onnx")
         onnxFiles = glob.glob(onnxPattern, recursive=True)
 
         for onnxPath in onnxFiles:
@@ -98,17 +96,18 @@ class Inference:
 
         try:
             subprocess.run(ffmpegCmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"Successfully converted {path} to mp3")
+            print(f"Successfully converted {inputWav} to mp3")
             if delete and os.path.exists(inputWav):
                 os.remove(inputWav)
                 print(f"Cleaned up temporary file {inputWav}")
-            return finalPath
+            return outputMP3
         except Exception as e:
-            print(f"Failed to convert {path} to mp3")
+            print(f"Failed to convert {inputWav} to mp3")
             print(e)
             return False
 
 if __name__ == "__main__":
-    inference = Inference()
+    inference = TTS()
     inference.indexModels()
     print(inference.index)
+    inference.synthesise("hello guys how are we doing today", "Weezer")

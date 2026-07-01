@@ -178,8 +178,17 @@ class Syncer:
                 audio = audio*0.9/peak
 
             print("audio:", type(audio), getattr(audio, "shape", None), audio.dtype)
+            cleanedSegments = []
+            for segment in segments:
+                cleanedSegments.append({
+                    "text": segment["text"],
+                    "start": max(0.0, segment["start"] - 0.1),
+                    "end": seg["end"] + 0.1
+                })
 
-            alignedResults = whisperx.align(segments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
+
+
+            alignedResults = whisperx.align(cleanedSegments, self.align, self.metadata, audio, self.device)  # char alignments maybe?
 
             for segment in alignedResults.get("segments", []):
 
@@ -208,7 +217,7 @@ class Syncer:
         return words
 
     def cleanLyrics(self, text):
-        return re.sub(r"[^\w\s']", "", word).lower().strip()
+        return re.sub(r"[^\w\s']", "", text).lower().strip()
 
 
     def chunkLyrics(self, lyrics, maxDuration=8.0):
@@ -217,6 +226,10 @@ class Syncer:
         chunkStart = None
 
         for line in lyrics:
+            if not line.get("text"):
+                continue
+
+
             if chunkStart is None:
                 chunkStart = line["start"]
 

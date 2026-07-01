@@ -1,4 +1,6 @@
 import os
+from difflib import SequenceMatcher
+
 import whisperx
 import re
 import torch
@@ -9,15 +11,23 @@ import threading
 
 
 class Cleaner:
-    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
-        self.musicDir = musicDir
-
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
+        self.musicDir = dir
         self.device = "cpu" #you should probably change this to cuda if your setup supports that
-
         computeType = "float32" #float16 if cuda
-        self.model = whisperx.load_model("large-v2", device=self.device, compute_type=computeType)
-
+        self.model = whisperx.load_model("large-v3", device=self.device, compute_type=computeType)
         self.lock = threading.Lock()
+
+        self.alignModelCache = {}
+        self.alignModelLock = threading.Lock()
+
+
+    def getAlignModel(self, languageCode):
+        with self.alignModelLock:
+            if languageCode not in self.alignModelCache:
+                modelA, metadata = whisperx.load_align_model(language_code=languageCode, device=self.device)
+                self.alignModelCache[languageCode] = (modelA, metadata)
+            return self.alignModelCache[languageCode]
 
     def cleanText(self, text):
         text = text.lower().strip()
@@ -51,7 +61,7 @@ class Cleaner:
     def cleanAristCorpus(self, artist, tolerance=0.75):
 
         processedDir = os.path.join(self.musicDir, "Processed", artist)
-        manifestPath = os.path.join(processedDir, f"{artist}.json")
+        manifestPath = os.path.join(processedDir, f"{artist}Synced.json")
         tempOutputPath = os.path.join(processedDir, f"{artist}Synced.tmp")
 
         if not os.path.exists(manifestPath):
@@ -82,11 +92,12 @@ class Cleaner:
 
             print(f"Cleaning {track['title']}")
 
-            audio = whisperx.load_audio(audioPath)
-            result = self.model.transcribe(audio, batch_size=16, language="en")
+
 
             try:
-                modelA, metadata = whisperx.load_align_model(language_code=result["language"], device=self.device)
+                audio = whisperx.load_audio(audioPath)
+                result = self.model.transcribe(audio, batch_size=16, language="en")
+                modelA, metadata = self.getAlignModel(languageCode=result["language"])
                 alignedResult = whisperx.align(result["segments"], modelA, metadata, audio, self.device, return_char_alignments=False)
             except Exception as e:
                 print(f"Failed to align {track['title']}: {e}")
@@ -103,47 +114,42 @@ class Cleaner:
                             "word": self.cleanText(text)
                         })
 
+            officialCleaned = [self.cleanText(word.get("word", "")) for word in officialWords]
+            whisperCleaned = [word["word"] for word in whisperWords]
+
+            matcher = SequenceMatcher(None, officialCleaned, whisperCleaned)
             verifiedWords = []
             pruned = 0
 
-            for official in officialWords:
-                word = self.cleanText(official.get("word", ""))
-                start = float(official.get("start", 0.0))
+            for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                if tag == "equal":
+                    for offset in range(i2-i1):
+                        offIdx = i1 +offset
+                        whIdx = j1 + offset
 
-                if not official:
-                    continue
+                        originalStart = float(officialWords[offIdx]["start"])
+                        whStart = float(whisperWords[whIdx]["start"])
 
-                match = None
-                for tw in whisperWords:
-                    if tw["word"] == word and abs(tw["start"] - start) <= tolerance:
-                        match = tw
-                        break
-
-                if match:
-                    verifiedWords.append({
-                        "word": official["word"],
-                        "start": round(match["start"], 4),
-                        "end": round(match["end"], 4)
-                    })
+                        if abs(whStart - originalStart) <= tolerance:
+                            verifiedWords.append({
+                                "word": officialWords[offIdx]["word"],
+                                "start": round(whStart, 4),
+                                "end": round(float(whisperWords[whIdx]["end"], 4))
+                            })
+                        else:
+                            verifiedWords.append(officialWords[offIdx])
                 else:
-                    pruned += 1
+                    for offset in range(i2-i1):
+                        verifiedWords.append(officialWords[i1+offset])
 
-            print(f"Pruned {pruned} words from {track['title']}")
-
-            if verifiedWords:
-                track["words"] = verifiedWords
-            else:
-                track["words"] = []
-
+            track["words"] = sorted(verifiedWords, key=lambda x: x.get("start", 0))
             track["verified"] = True
             self.saveProgress(manifestPath, tempOutputPath, track)
-        print(f"Synced manifest run complete for {artist}")
         return True
+
 
     def isAlreadyChecked(self, track):
         return track.get("verified", False)
-
-
 
     def cleanAll(self, nthreads=3):
         processedDir = os.path.join(self.musicDir, "Processed")

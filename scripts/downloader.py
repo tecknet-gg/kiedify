@@ -179,7 +179,7 @@ class Downloader:
         self.installTracks(self.installQueue)
 
 
-    def queueArtists(self,artists, qty=10, nthreads=3):
+    def queueArtists(self, artists, qty=10, nthreads=3):
         passed, failed = 0, 0
         for artist in artists:
             passed, failed  = self.artistToInstalled(artist, qty=qty, nthreads=nthreads)

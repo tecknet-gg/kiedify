@@ -7,6 +7,9 @@ from downloader import Downloader
 from isolater import Preprocessor
 from directory import DirectoryManager
 from lyrics import LyricFinder
+from tts import TTSGenerator
+from inference import TTS
+from cleaner import Cleaner
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None):
@@ -24,8 +27,11 @@ class Router:
         self.preprocessor = Preprocessor(dir=self.musicDir)
         self.manager = DirectoryManager(dir=self.musicDir)
         self.lyrics = LyricFinder(dir=self.musicDir)
+        self.ttsgenerator = TTSGenerator(dir=self.musicDir)
+        self.tts = TTS(dir=self.musicDir)
+        #self.cleaner = Cleaner(dir=self.musicDir)
 
-    def basicMatch(self, text, artist, fuzzy=True, rtc=True):
+    def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
         if fuzzy:
             stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy")
         else:
@@ -49,7 +55,7 @@ class Router:
         print(f"Generated {file}")
 
     def downloadArists(self, artists):
-        self.downloader.downloadArists(artists)
+        self.downloader.queueArtists(artists)
 
     def processAll(self, nthreads=2):
         self.preprocessor.processAll(max=nthreads)
@@ -60,7 +66,7 @@ class Router:
     def sourceLyrics(self, nthreads=5):
         self.lyrics.ammendMetadata()
         self.lyrics.injectDuration()
-        self.lyrics.generateLyrics()
+        self.lyrics.generateQueue()
         self.lyrics.gatherMulithreaded(nthreads=nthreads)
         self.lyrics.cleanLyricless()
 
@@ -76,6 +82,45 @@ class Router:
         success = self.phoneme.runMFA(artist)
         return success
 
+    def generateTTSDataset(self, artist):
+        self.ttsgenerator.generateTTSDataset(artist)
+
+    def exportONNX(self, artist):
+        self.ttsgenerator.exportModel(artist)
+
+    def pruneTTSDataset(self, artists):
+        for artist in artists:
+            self.ttsgenerator.pruneTTSDataset(artist)
+
+    def downloadBases(self):
+        self.ttsgenerator.downloadBases()
+
+    def generateTTSModel(self, artist, gender, resume=True):
+        self.ttsgenerator.generateModel(artist, gender, resume=resume)
+
+    def tts(self, text, artist, fileName=None):
+        self.tts.synthesise(text, artist, fileName=fileName)
+
+    def secondPass(self, nthreads=3):
+        self.cleaner.cleanAll(nthreads=nthreads)
+
+
 if __name__ == "__main__":
     router = Router()
-    router.semanticMatch(f"{str(input('Enter the text: '))}", f"{str(input('Enter the artist: '))}")
+    artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
+    gender = ["male", "male", "female", "female"]
+
+    router.downloadArists(artists)
+    router.processAll()
+    router.sourceLyrics()
+    router.postClean()
+
+    #router.secondPass()
+    #router.generateTTSDataset(artists)
+    #router.pruneTTSDataset(artists)
+    #router.downloadBases()
+
+    #router.generateTTSModel(artists[0], gender[0])
+    #router.exportONNX(artists[0])
+
+

@@ -7,8 +7,11 @@ import shutil
 import random
 import urllib
 import wave
+import torch
+import pathlib
+import sys
 
-class ModelGenerator:
+class TTSGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
         self.wavDir = os.path.join(self.dir, "WAV")
@@ -353,10 +356,6 @@ class ModelGenerator:
 
         print(f"Exporting {artist} model to {onnxPath}")
 
-        import torch
-        import pathlib
-        import sys
-
         try:
             torch.serialization.add_safe_globals([pathlib.PosixPath])
             original = torch.onnx.export
@@ -392,7 +391,7 @@ class ModelGenerator:
 
 
 if __name__ == "__main__":
-    generator = ModelGenerator()
+    generator = TTSGenerator()
     artists = ["Weezer", "Red Hot Chili Peppers", "Avril Lavigne", "Paramore", "The Beatles", "The Cardigans"]
 
     #for artist in artists:

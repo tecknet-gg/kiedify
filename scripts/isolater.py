@@ -7,6 +7,7 @@ import os
 import json
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from directory import DirectoryManager
 
