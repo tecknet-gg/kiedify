@@ -1,6 +1,28 @@
 import os
 from difflib import SequenceMatcher
 
+import torchaudio
+import torch
+import functools
+
+if not hasattr(torchaudio, "AudioMetaData"):
+    from dataclasses import dataclass
+    @dataclass
+    class AudioMetaData:
+        sample_rate: int; num_frames: int; num_channels: int; bits_per_sample: int; encoding: str
+    torchaudio.AudioMetaData = AudioMetaData
+
+if not hasattr(torchaudio, "list_audio_backends"):
+    torchaudio.list_audio_backends = lambda: ["ffmpeg"]
+
+originalTorch = torch.load
+@functools.wraps(originalTorch)
+def patchedTorchLoad(*args, **kwargs):
+    kwargs['weights_only'] = False
+    return originalTorch(*args, **kwargs)
+
+torch.load = patchedTorchLoad()
+
 import whisperx
 import re
 import torch

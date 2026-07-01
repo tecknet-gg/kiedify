@@ -10,6 +10,7 @@ from lyrics import LyricFinder
 from tts import TTSGenerator
 from inference import TTS
 from cleaner import Cleaner
+from syncer import Syncer
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None):
@@ -29,6 +30,7 @@ class Router:
         self.lyrics = LyricFinder(dir=self.musicDir)
         self.ttsgenerator = TTSGenerator(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
+        self.syncer = Syncer(dir=self.musicDir)
         #self.cleaner = Cleaner(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
@@ -57,7 +59,7 @@ class Router:
     def downloadArists(self, artists):
         self.downloader.queueArtists(artists)
 
-    def processAll(self, nthreads=2):
+    def preprocessAll(self, nthreads=2):
         self.preprocessor.processAll(max=nthreads)
         self.manager.cleanDownloadDir()
         self.manager.cleanIsolatedDir()
@@ -104,16 +106,21 @@ class Router:
     def secondPass(self, nthreads=3):
         self.cleaner.cleanAll(nthreads=nthreads)
 
+    def syncAll(self):
+        self.syncer.syncAll()
+
 
 if __name__ == "__main__":
     router = Router()
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     gender = ["male", "male", "female", "female"]
 
-    router.downloadArists(artists)
-    router.processAll()
+    #router.downloadArists(artists)
+    router.preprocessAll()
     router.sourceLyrics()
     router.postClean()
+    router.syncAll()
+
 
     #router.secondPass()
     #router.generateTTSDataset(artists)

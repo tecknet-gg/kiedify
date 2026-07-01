@@ -213,7 +213,7 @@ class TTSGenerator:
         for gender, assets in targets.items():
             os.makedirs(assets["dir"], exist_ok=True)
             localConfig = os.path.join(assets["dir"], "config.json")
-            localCpkt = os.path.join(assets["dir"], "base.cpkt")
+            localCpkt = os.path.join(assets["dir"], "base.ckpt")
 
             if not os.path.exists(localConfig):
                 print(f"Downloading {gender} to {localConfig}")
@@ -241,7 +241,7 @@ class TTSGenerator:
 
         print(f"Generating {artist} dataset.jsonl")
         preprocessCmd = [
-            "python3", "-m", "piper_train.preprocess",
+            sys.executable, "-m", "piper_train.preprocess",
             "--language", "en-us",
             "--input-dir", artistPath,
             "--output-dir", artistPath,
@@ -252,7 +252,7 @@ class TTSGenerator:
 
         try:
             subprocess.run(preprocessCmd, check=True)
-            print("Successfully preprocessed {artist}")
+            print(f"Successfully preprocessed {artist}")
             return True
         except Exception as e:
             print(f"Failed to preprocess: {e}")
@@ -285,9 +285,9 @@ class TTSGenerator:
                 return False
 
         cmd = [
-            "python3", "-m", "piper_train",
+            sys.executable, "-m", "piper_train",
             "--dataset-dir", artistPath,
-            "--accelerator", "gpu",
+            "--accelerator", "mps",
             "--devices", "1",
             "--batch-size", str(batchSize),
             "--validation-split", "0.05",
@@ -357,8 +357,13 @@ class TTSGenerator:
         print(f"Exporting {artist} model to {onnxPath}")
 
         try:
-            torch.serialization.add_safe_globals([pathlib.PosixPath])
-            original = torch.onnx.export
+            originalTorch = torch.load()
+            @functools.wraps(originalTorch)
+            def patchedTorch(*args, **kwargs):
+                kwargs["weights_only"] = False
+                return originalTorch(*args, **kwargs)
+            
+            original = torch.onnx.export            
             def patch(*args, **kwargs):
                 kwargs["dynamo"] = False
                 return original(*args, **kwargs)
@@ -374,6 +379,7 @@ class TTSGenerator:
                 print(f"Failed to export {artist}: {e}")
 
             sys.argv = originalArgv
+            torch.load = originalTorch
             print(f"Exported {artist} to {onnxPath}")
 
             if os.path.exists(sourceConfig):
@@ -402,7 +408,6 @@ if __name__ == "__main__":
 
     #generator.downloadBases(artists[0])
     #generator.generateModel(artists[0],gender="male", resume=True)
-
     generator.exportModel(artists[0])
 
 
