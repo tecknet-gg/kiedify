@@ -11,7 +11,7 @@ class RVCGenerator:
         self.rvc = os.path.join(self.modelsRoot, "rvc")
         os.makedirs(self.rvc, exist_ok=True)
 
-    def downloadRVCBases(self):
+    def downloadBases(self):
         print(f"Downloading RVC v2 bases")
         models = {
             "hubert.pt": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
@@ -33,4 +33,4 @@ class RVCGenerator:
 
 if __name__ == "__main__":
     rvc = RVCGenerator()
-    rvc.downloadRVCBases()
+    rvc.downloadBases()

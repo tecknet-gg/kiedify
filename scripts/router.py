@@ -11,6 +11,8 @@ from tts import TTSGenerator
 from inference import TTS
 from cleaner import Cleaner
 from syncer import Syncer
+from rvc import RVCGenerator
+from dataset import DatasetGenerator
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None):
@@ -32,6 +34,8 @@ class Router:
         self.tts = TTS(dir=self.musicDir)
         self.syncer = Syncer(dir=self.musicDir)
         #self.cleaner = Cleaner(dir=self.musicDir)
+        self.rvcgenerator = RVCGenerator(dir=self.musicDir)
+        self.dataset = DatasetGenerator(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
         if fuzzy:
@@ -94,7 +98,7 @@ class Router:
         for artist in artists:
             self.ttsgenerator.pruneTTSDataset(artist)
 
-    def downloadBases(self):
+    def downloadTTSBases(self):
         self.ttsgenerator.downloadBases()
 
     def generateTTSModel(self, artist, gender, resume=True):
@@ -108,6 +112,17 @@ class Router:
 
     def syncAll(self):
         self.syncer.syncAll()
+
+    def downloadRVCBases(self):
+        self.rvcgenerator.downloadBases()
+
+    def generateDatasets(self, artists):
+        for artist in artists:
+            self.dataset.generateDataset(artist)
+
+    def pruneDataset(self, artists):
+        for artist in artists:
+            self.generator.pruneDataset(artist)
 
 
 if __name__ == "__main__":
@@ -124,7 +139,7 @@ if __name__ == "__main__":
     #router.secondPass()
     #router.generateTTSDataset(artists)
     #router.pruneTTSDataset(artists)
-    #router.downloadBases()
+    #router.downloadTTSBases()
 
     #router.generateTTSModel(artists[0], gender[0])
     #router.exportONNX(artists[0])
