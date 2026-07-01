@@ -121,7 +121,6 @@ if __name__ == "__main__":
     router.postClean()
     router.syncAll()
 
-
     #router.secondPass()
     #router.generateTTSDataset(artists)
     #router.pruneTTSDataset(artists)

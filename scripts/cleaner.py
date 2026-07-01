@@ -21,7 +21,7 @@ def patchedTorchLoad(*args, **kwargs):
     kwargs['weights_only'] = False
     return originalTorch(*args, **kwargs)
 
-torch.load = patchedTorchLoad()
+torch.load = patchedTorchLoad
 
 import whisperx
 import re
