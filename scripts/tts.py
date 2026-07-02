@@ -214,6 +214,10 @@ class TTSGenerator:
             print(f"Failed to export {artist}: {e}")
             return False
 
+    def downloadVoice(self):
+        #download male and female base voice to run local inference for rvc pipeline later
+        pass
+
 
 if __name__ == "__main__":
     generator = TTSGenerator()
@@ -225,9 +229,9 @@ if __name__ == "__main__":
     #for artist in artists:
         #generator.pruneDataset(artist)
 
-    #generator.downloadBases(artists[0])
+    generator.downloadBases()
     #generator.generateModel(artists[0],gender="male", resume=True)
-    generator.exportModel(artists[0])
+    #generator.exportModel(artists[0])
 
 
 

@@ -5,8 +5,8 @@ import urllib.request
 
 
 class RVCGenerator:
-    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
-        self.musicDir = musicDir
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
+        self.musicDir = dir
         self.modelsRoot = os.path.join(self.musicDir, "models")
         self.rvc = os.path.join(self.modelsRoot, "rvc")
         os.makedirs(self.rvc, exist_ok=True)

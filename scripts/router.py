@@ -60,8 +60,8 @@ class Router:
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
 
-    def downloadArists(self, artists):
-        self.downloader.queueArtists(artists)
+    def downloadArtists(self, artists, qty=10):
+        self.downloader.queueArtists(artists, qty=qty)
 
     def preprocessAll(self, nthreads=2):
         self.preprocessor.processAll(max=nthreads)
@@ -69,7 +69,7 @@ class Router:
         self.manager.cleanIsolatedDir()
         self.manager.flattenProcessedDir()
 
-    def sourceLyrics(self, nthreads=5):
+    def sourceLyrics(self, nthreads=15):
         self.lyrics.ammendMetadata()
         self.lyrics.injectDuration()
         self.lyrics.generateQueue()
@@ -78,7 +78,10 @@ class Router:
 
     def postClean(self):
         self.manager.nukeTarget("Raw")
-        self.manager.nukeTarget("Processed")
+        self.manager.nukeTarget("Isolated")
+
+    def nukeTarget(self, target):
+        self.manager.nukeTarget(target)
 
     def stageMFA(self, artist):
         self.phoneme.prepareMFA(artist)
@@ -88,15 +91,8 @@ class Router:
         success = self.phoneme.runMFA(artist)
         return success
 
-    def generateTTSDataset(self, artist):
-        self.ttsgenerator.generateTTSDataset(artist)
-
     def exportONNX(self, artist):
         self.ttsgenerator.exportModel(artist)
-
-    def pruneTTSDataset(self, artists):
-        for artist in artists:
-            self.ttsgenerator.pruneTTSDataset(artist)
 
     def downloadTTSBases(self):
         self.ttsgenerator.downloadBases()
@@ -120,28 +116,44 @@ class Router:
         for artist in artists:
             self.dataset.generateDataset(artist)
 
-    def pruneDataset(self, artists):
+    def pruneDataset(self, artists, target):
         for artist in artists:
-            self.generator.pruneDataset(artist)
+            self.dataset.pruneDataset(artist, target=target)
 
 
 if __name__ == "__main__":
     router = Router()
-    artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
-    gender = ["male", "male", "female", "female"]
+    artists = ["Weezer", "Red Hot Chili Peppers","The Dismemberment Plan", "The Pretenders", "Fleetwood Mac", "Paramore"]
+    genders = ["male", "male", "female", "female"]
 
-    #router.downloadArists(artists)
+    #router.downloadArtists(artists[2:3], qty=5)
+    #router.downloadArtists(artists[5:], qty=5)
+
     router.preprocessAll()
-    router.sourceLyrics()
-    router.postClean()
-    router.syncAll()
+    #router.sourceLyrics()
+
+    #router.postClean()
+    #router.syncAll()
 
     #router.secondPass()
-    #router.generateTTSDataset(artists)
-    #router.pruneTTSDataset(artists)
+    #router.generateDataset(artists)
+    #router.pruneDataset(artists, target=5)
     #router.downloadTTSBases()
 
-    #router.generateTTSModel(artists[0], gender[0])
-    #router.exportONNX(artists[0])
+    '''
+    for i, artist in enumerate(artists):
+        router.generateTTSModel(artist, genders[i])
+        router.exportONNX(artist)
+    '''
+
+    #router.nukeTarget("Dataset")
+    #router.generateDataset(artists)
+    #router.pruneDataset(artists, target=1)
+
+    '''
+    for i, artist in enumerate(artists):
+        router.generateRVCModel(artist)
+    '''
+
 
 

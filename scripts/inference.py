@@ -110,4 +110,4 @@ if __name__ == "__main__":
     inference = TTS()
     inference.indexModels()
     print(inference.index)
-    inference.synthesise("hello guys how are we doing today", "Weezer")
+    inference.synthesise("hello guys how are we doing today", "lessac")

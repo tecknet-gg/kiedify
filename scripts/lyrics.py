@@ -180,6 +180,8 @@ class LyricFinder:
             except Exception as e:
                 print(f"Failed to query lyric server: {e}")
                 attempts += 1
+                self.lyricsQueue.task_done()
+
 
                 if attempts > 4:
                     print(f"Failed to query lyric server for {songName} by {artist} after 5 attempts.")
@@ -187,7 +189,6 @@ class LyricFinder:
 
                 print(f"Retrying {songName} - attempt {attempts} of 5.")
                 self.lyricsQueue.put((songName, artist, duration, attempts))
-                self.lyricsQueue.task_done()
 
     def parseSyncedLyrics(self, lyrics):
         parsedLyrics = []
@@ -328,9 +329,9 @@ class LyricFinder:
 
 
 
-    def gatherMulithreaded(self, nthread=15):
+    def gatherMulithreaded(self, nthreads=15):
         threads = []
-        for i in range(nthread):
+        for i in range(nthreads):
             thread = threading.Thread(target=self.getLyrics)
             thread.start()
             threads.append(thread)
