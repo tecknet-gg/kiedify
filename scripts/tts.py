@@ -214,10 +214,42 @@ class TTSGenerator:
             print(f"Failed to export {artist}: {e}")
             return False
 
-    def downloadVoice(self):
-        #download male and female base voice to run local inference for rvc pipeline later
-        pass
+    def downloadVoices(self):
+        base = os.path.join(self.dir, "models")
+        targets = {
+            "male": {
+                "dir": os.path.join(base, "male-tts"),
+                ".onnx": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/hfc_male/medium/en_US-hfc_male-medium.onnx",
+                ".json": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/hfc_male/medium/en_US-hfc_male-medium.onnx.json"
+            },
+            "female": {
+                "dir": os.path.join(base, "female-tts"),
+                ".onnx": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/libritts/high/en_US-libritts-high.onnx",
+                ".json": "https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/libritts/high/en_US-libritts-high.onnx.json"
+            }
+        }
 
+        for gender, assets in targets.items():
+            base = assets["dir"]
+            onnx = os.path.join(base, (assets[".onnx"].rsplit("/", 1))[1])
+            json = os.path.join(base,(assets[".json"].rsplit("/", 1))[1])
+
+            os.makedirs(base, exist_ok=True)
+
+            try:
+                print(f"Downloading {assets['.onnx']} to {onnx}")
+                urllib.request.urlretrieve(assets[".onnx"], onnx)
+                print(f"Downloaded {assets['.onnx']} to {onnx}")
+            except Exception as e:
+                print(f"Failed to download {assets['.onnx']}: {e}")
+
+            try:
+                print(f"Downloading {assets['.json']} to {json}")
+                urllib.request.urlretrieve(assets[".json"], json)
+                print(f"Downloaded {assets['.json']} to {json}")
+
+            except Exception as e:
+                print(f"Failed to download {assets['.json']}: {e}")
 
 if __name__ == "__main__":
     generator = TTSGenerator()
@@ -229,9 +261,10 @@ if __name__ == "__main__":
     #for artist in artists:
         #generator.pruneDataset(artist)
 
-    generator.downloadBases()
+    #generator.downloadBases()
     #generator.generateModel(artists[0],gender="male", resume=True)
     #generator.exportModel(artists[0])
+    generator.downloadVoices()
 
 
 

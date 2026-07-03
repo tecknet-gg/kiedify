@@ -67,14 +67,16 @@ class Router:
         self.preprocessor.processAll(max=nthreads)
         self.manager.cleanDownloadDir()
         self.manager.cleanIsolatedDir()
-        self.manager.flattenProcessedDir()
 
     def sourceLyrics(self, nthreads=15):
-        self.lyrics.ammendMetadata()
-        self.lyrics.injectDuration()
         self.lyrics.generateQueue()
         self.lyrics.gatherMulithreaded(nthreads=nthreads)
         self.lyrics.cleanLyricless()
+
+    def ammendMetadata(self):
+        self.manager.flattenProcessedDir()
+        self.lyrics.ammendMetadata()
+        self.lyrics.injectDuration()
 
     def postClean(self):
         self.manager.nukeTarget("Raw")
@@ -130,12 +132,15 @@ if __name__ == "__main__":
     #router.downloadArtists(artists[5:], qty=5)
 
     router.preprocessAll()
+
+    #router.ammendMetadata()
     #router.sourceLyrics()
 
     #router.postClean()
     #router.syncAll()
 
     #router.secondPass()
+
     #router.generateDataset(artists)
     #router.pruneDataset(artists, target=5)
     #router.downloadTTSBases()

@@ -57,7 +57,7 @@ class LyricFinder:
 
             try:
                 with open(manifestPath, "r") as f:
-                    tracks = json.load(f)
+                    tracks = json.load(f, strict=False)
             except Exception as e:
                 print(f"Failed to load {manifestPath}: error: {e}")
                 continue
@@ -124,8 +124,10 @@ class LyricFinder:
             if not os.path.exists(manifestPath):
                 print(f"Manifest missing, skipping {artist}")
                 continue
+
             try:
                 with open(manifestPath, "r") as f:
+                    print(f"Tracks loaded for {artist}")
                     tracks = json.load(f)
             except Exception as e:
                 print(f"Failed to load {manifestPath}: error: {e}")
@@ -327,8 +329,6 @@ class LyricFinder:
 
         return None
 
-
-
     def gatherMulithreaded(self, nthreads=15):
         threads = []
         for i in range(nthreads):
@@ -347,7 +347,8 @@ class LyricFinder:
             for file in files:
                 if file.endswith(".json"):
                     with open(os.path.join(root, file), "r") as f:
-                        tracks = json.load(f)
+                        print(f"Attempting to process {file}")
+                        tracks = json.load(f, strict=False)
                         for track in tracks:
                             if not track.get("lyricsFound"):
                                 duration = track.get("duration")
@@ -400,7 +401,6 @@ class LyricFinder:
                         print(f"Deleted {track}.mp3")
                     except Exception as e:
                         print(f"Failed to delete {track}.mp3: {e}")
-
 
 
 if __name__ == "__main__":
