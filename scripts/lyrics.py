@@ -288,19 +288,10 @@ class LyricFinder:
 
                     else:
                         print(f"No lyrics found for {songName}")
+
                     manifestUpdated = True
-
-                    syncStatus = track["syncedLyrics"]
-                    if syncStatus:
-                        print(f"Synced lyrics found for {songName}")
-                    else:
-                        print(f"Synced lyrics not found for {songName}")
-
-
                     break
 
-
-        with self.lock:
             if manifestUpdated:
                 try:
                     with open(manifestPath, "w") as f:
@@ -377,6 +368,7 @@ class LyricFinder:
                         tracks = json.load(f)
                 except Exception as e:
                     print(f"Failed to load {manifestPath}: error: {e}")
+                    continue
 
                 delete = []
                 clean = []
@@ -394,6 +386,7 @@ class LyricFinder:
                     print("Manifest succesfully updated")
                 except Exception as e:
                     print(f"Failed to save {manifestPath}: error: {e}")
+                    continue
 
                 for track in delete:
                     try:
@@ -410,7 +403,7 @@ if __name__ == "__main__":
     lyricFinder.ammendMetadata()
     lyricFinder.injectDuration()
     lyricFinder.generateQueue()
-    lyricFinder.gatherMulithreaded(nthread=5)
+    lyricFinder.gatherMulithreaded(nthreads=5)
 
     lyricFinder.cleanLyricless()
     manager.nukeTarget("Raw")

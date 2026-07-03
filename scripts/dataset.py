@@ -63,7 +63,7 @@ class DatasetGenerator:
         with open(manifestPath, "r") as file:
             tracks = json.load(file)
 
-        print(f"Generating piper dataset for {artist} with {len(tracks)} tracks")
+        print(f"Generating dataset for {artist} with {len(tracks)} tracks")
         metadataEntries = []
         sliceCounter = 0
 
