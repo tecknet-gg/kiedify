@@ -84,5 +84,7 @@ class RVCGenerator:
 
 
 if __name__ == "__main__":
+    #run script from terminal after switching to .venvRVC
+
     rvc = RVCGenerator()
     rvc.downloadBases()

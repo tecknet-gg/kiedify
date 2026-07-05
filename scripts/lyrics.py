@@ -7,6 +7,7 @@ from mutagen.mp3 import MP3
 import time
 from directory import DirectoryManager
 import shutil
+import re
 
 
 
@@ -205,9 +206,11 @@ class LyricFinder:
                 time = time.strip("[").strip()
                 text = text.strip()
 
-
-
                 parts = time.split(":")
+
+                if not parts[0].isdigit():
+                    continue
+
                 minutes = float(parts[0])
                 seconds = float(parts[1])
                 start = round(minutes * 60 + seconds, 2)
@@ -303,13 +306,23 @@ class LyricFinder:
                     print(f"Failed to save {manifestPath}: error: {e}")
 
     def queryLyric(self, songName, artist, duration, attempts):
+
+        cleanTitle = re.sub(
+            r'[\(\[][^)]*(?:remaster|demo|live|version|edit|take|mix)[^)]*[\)\]]',
+            "",
+            songName,
+            flags=re.IGNORECASE
+        )
+        cleanTitle = cleanTitle.split(" - ")[0].strip()
+
+
         payload = {
-            "track_name": songName,
+            "track_name": cleanTitle,
             "artist_name": artist,
         }
 
-        if duration:
-            payload["duration"] = (int(duration))
+        #if duration:
+            #payload["duration"] = (int(duration))
 
         response = requests.get(self.URL, headers=self.headers, params=payload)
         response.raise_for_status()

@@ -1,5 +1,4 @@
 import os
-from cgitb import text
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -69,6 +68,7 @@ class Router:
     def sourceLyrics(self, nthreads=15):
         self.lyrics.generateQueue()
         self.lyrics.gatherMulithreaded(nthreads=nthreads)
+        self.lyrics.lyricsQueue.join()
         self.lyrics.cleanLyricless()
 
     def ammendMetadata(self):
