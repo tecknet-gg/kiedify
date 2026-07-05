@@ -11,7 +11,6 @@ from tts import TTSGenerator
 from inference import TTS
 from cleaner import Cleaner
 from syncer import Syncer
-from rvc import RVCGenerator
 from dataset import DatasetGenerator
 
 class Router:
@@ -34,7 +33,6 @@ class Router:
         self.tts = TTS(dir=self.musicDir)
         self.syncer = Syncer(dir=self.musicDir)
         #self.cleaner = Cleaner(dir=self.musicDir)
-        self.rvcgenerator = RVCGenerator(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
@@ -131,10 +129,10 @@ if __name__ == "__main__":
     #router.downloadArtists(artists[2:3], qty=5)
     #router.downloadArtists(artists[5:], qty=5)
 
-    router.preprocessAll()
+    #router.preprocessAll(nthreads=2)
 
-    #router.ammendMetadata()
-    #router.sourceLyrics()
+    router.ammendMetadata()
+    router.sourceLyrics()
 
     #router.postClean()
 

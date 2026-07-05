@@ -4,7 +4,6 @@ import shutil
 import time
 import threading
 
-
 class DirectoryManager:
     def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
@@ -34,6 +33,8 @@ class DirectoryManager:
                         if file.endswith(".mp3"):
                             currentPath = os.path.join(root, file)
                             targetPath = os.path.join(albumPath, file) #targets the album root
+                        else:
+                            continue
 
                         try:
                             shutil.move(currentPath, targetPath)
