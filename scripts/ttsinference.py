@@ -41,7 +41,7 @@ class TTS:
 
         return self.index
 
-    def synthesise(self, text, artist, fileName="output", modelPath=None):
+    def synthesise(self, text, artist, fileName="output", modelPath=None, keepWav=False):
         artistKey = artist.lower()
 
         if modelPath is None:
@@ -80,7 +80,8 @@ class TTS:
             if os.path.exists(wavPath):
                 os.remove(wavPath)
 
-        final = self.convertToMP3(wavPath, mp3Path)
+        final = self.convertToMP3(wavPath, mp3Path, delete=not(keepWav))
+        return wavPath if keepWav else mp3Path
 
     def convertToMP3(self, inputWav, outputMP3, delete=True):
         print(f"Converting {inputWav} to {outputMP3}")

@@ -11,6 +11,7 @@ from ttsinference import TTS
 from cleaner import Cleaner
 from syncer import Syncer
 from dataset import DatasetGenerator
+import subprocess
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
@@ -128,8 +129,52 @@ class Router:
         for artist in artists:
             self.dataset.pruneDataset(artist, target=target)
 
-    def rvc(self, text, artist, fileName="output.txt"):
+    def rvc(self, text, artist, fileName="output.txt", ttsMode="local"):
         gender = self.genders[self.artists.index(artist)]
+
+        sitchedDir = os.path.join(self.musicDir, "Stitched")
+        os.makedirs(sitchedDir, exist_ok=True)
+
+        ttsTemp = f"{fileName}_temp"
+        ttsWav = os.path.join(sitchedDir, f"{ttsTemp}.wav")
+
+        finalRVCWav = os.path.join(sitchedDir, f"{fileName}.wav")
+        print(f"Generate base tts: {ttsTemp}")
+        self.tts.synthesize(text, artist, fileName=ttsTemp)
+
+        rootDir = self.musicDir.rsplit("/", 1)[0]
+        rvcPython = os.path.join(rootDir, "venvRVC", "bin", "python")
+        workerScript = os.path.join(rootDir, "scripts", "rvcinference.py")
+
+        if gender == "female":
+            pitch=None
+        if gender == "male":
+            pitch=None
+        else:
+            pitch = None
+
+        cmd = [
+            rvcPython, workerScript,
+            "--artist", artist.lower(),
+            "--input", ttsWav,
+            "--output", finalRVCWav,
+            "--ttsMode", str(pitch),
+        ]
+
+        try:
+            subprocess.run(cmd)
+            print(f"Generated {finalRVCWav}")
+            if os.path.exists(finalRVCWav):
+                os.remove(finalRVCWav)
+
+            #convert to mp3
+            #return mp3 path
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error generating {finalRVCWav} - {e}")
+            return False
+
+
 
 
 if __name__ == "__main__":
