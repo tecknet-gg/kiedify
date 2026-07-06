@@ -7,18 +7,26 @@ from isolater import Preprocessor
 from directory import DirectoryManager
 from lyrics import LyricFinder
 from tts import TTSGenerator
-from inference import TTS
+from ttsinference import TTS
 from cleaner import Cleaner
 from syncer import Syncer
 from dataset import DatasetGenerator
 
 class Router:
-    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None):
+    def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
 
         self.globalNodes = globalNodes if globalNodes else None
         self.musicDir = dir
         self.extractor = PhonemeExtractor(self.musicDir)
         self.weights = self.extractor.phonemeWeights
+
+        self.artistMetadata = artists if artists else None
+        self.artists = []
+        self.genders = []
+
+        for artist, gender in self.artistMetadata:
+            self.artists.append(artist)
+            self.genders.append(gender)
 
         self.synth = PhonemeSynth(self.musicDir, self.globalNodes, weights=self.weights)
         self.phoneme = PhonemeExtractor(dir=self.musicDir)
@@ -120,19 +128,25 @@ class Router:
         for artist in artists:
             self.dataset.pruneDataset(artist, target=target)
 
+    def rvc(self, text, artist, fileName="output.txt"):
+        gender = self.genders[self.artists.index(artist)]
+
 
 if __name__ == "__main__":
-    router = Router()
     artists = ["Weezer", "Red Hot Chili Peppers","The Dismemberment Plan", "The Pretenders", "Fleetwood Mac", "Paramore"]
-    genders = ["male", "male", "female", "female"]
+    genders = ["male", "male", "male", "female", "female", "female"]
+    artists = tuple(zip(artists, genders))
+    router = Router(artists=artists)
+    router.rvc("The Pretenders", "The Pretenders")
+
 
     #router.downloadArtists(artists[2:3], qty=5)
     #router.downloadArtists(artists[5:], qty=5)
 
     #router.preprocessAll(nthreads=2)
 
-    router.ammendMetadata()
-    router.sourceLyrics()
+    #router.ammendMetadata()
+    #router.sourceLyrics()
 
     #router.postClean()
 
