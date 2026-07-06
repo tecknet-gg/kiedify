@@ -41,7 +41,6 @@ class TTS:
 
         return self.index
 
-
     def synthesise(self, text, artist, fileName="output", modelPath=None):
         artistKey = artist.lower()
 
@@ -106,8 +105,9 @@ class TTS:
             print(e)
             return False
 
+
 if __name__ == "__main__":
     inference = TTS()
     inference.indexModels()
     print(inference.index)
-    inference.synthesise("hello guys how are we doing today", "hfc_male")
+    inference.synthesise("hello guys how are we doing today", "libritts")

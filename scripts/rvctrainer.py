@@ -3,6 +3,7 @@ import sys
 import subprocess
 import urllib.request
 from dotenv import load_dotenv
+from matplotlib import artist
 
 from rvc.modules.train.preprocess import preprocess_dataset
 from rvc.modules.train.extract import extract_features
@@ -87,4 +88,6 @@ if __name__ == "__main__":
     #run script from terminal after switching to .venvRVC
 
     rvc = RVCGenerator()
+    artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
+    rvc.trainArtist(artist=artist[0], epochs=200, batchSize=8)
     rvc.downloadBases()
