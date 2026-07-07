@@ -140,7 +140,7 @@ class Router:
 
         finalRVCWav = os.path.join(sitchedDir, f"{fileName}.wav")
         print(f"Generate base tts: {ttsTemp}")
-        self.tts.synthesize(text, artist, fileName=ttsTemp)
+        self.tts.synthesise(text, artist, fileName=ttsTemp)
 
         rootDir = self.musicDir.rsplit("/", 1)[0]
         rvcPython = os.path.join(rootDir, "venvRVC", "bin", "python")
@@ -182,13 +182,13 @@ if __name__ == "__main__":
     genders = ["male", "male", "male", "female", "female", "female"]
     artists = tuple(zip(artists, genders))
     router = Router(artists=artists)
-    router.rvc("The Pretenders", "The Pretenders")
+    #router.rvc("The Pretenders", "The Pretenders")
 
 
     #router.downloadArtists(artists[2:3], qty=5)
     #router.downloadArtists(artists[5:], qty=5)
 
-    #router.preprocessAll(nthreads=2)
+    router.preprocessAll(nthreads=2)
 
     #router.ammendMetadata()
     #router.sourceLyrics()

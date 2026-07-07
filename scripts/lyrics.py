@@ -263,37 +263,30 @@ class LyricFinder:
                 print(f"Failed to load {manifestPath}: error: {e}")
                 return
 
+            synced = lyricData.get("syncedLyrics")
+            plain = lyricData.get("plainLyrics")
+            trackId = lyricData.get("id")
+            path = os.path.join(artistPath, f"{songName}.mp3")
+
+
             manifestUpdated = False
             cleanTarget = self.cleanString(songName)
 
             for track in tracks:
                 if self.cleanString(track.get("title")) == cleanTarget:
-                    synced = lyricData.get("syncedLyrics")
-                    plain = lyricData.get("plainLyrics")
-                    trackId = lyricData.get("id")
-                    path = os.path.join(artistPath, f"{songName}.mp3")
-
                     track["lyricsID"] = trackId
                     if synced:
-                        parsed = self.parseSyncedLyrics(synced)
-                        track["lyrics"] = parsed
+                        track["lyrics"] = self.parseSyncedLyrics(synced)
                         track["lyricsFound"] = True
                         track["syncedLyrics"] = True
                         track["lyricsPath"] = path
-
                     elif plain:
-                        track["lyrics"] = [{
-                            "text": plain,
-                        }]
+                        track["lyrics"] = [{"text": plain,}]
                         track["lyricsFound"] = True
                         track["syncedLyrics"] = False
                         track["lyricsPath"] = path
 
-                    else:
-                        print(f"No lyrics found for {songName}")
-
                     manifestUpdated = True
-                    break
 
             if manifestUpdated:
                 try:
@@ -321,15 +314,24 @@ class LyricFinder:
             "artist_name": artist,
         }
 
-        #if duration:
-            #payload["duration"] = (int(duration))
+        try:
+            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=7)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0:
+                    return data[0]
 
-        response = requests.get(self.URL, headers=self.headers, params=payload)
-        response.raise_for_status()
+            fallback = f"{cleanTitle} {artist}".replace("'", "").replace('"', "")
+            payload = {"q": fallback}
 
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            return data[0]
+            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=7)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0:
+                    return data[0]
+
+        except Exception as e:
+            print(f"Failed to query {songName}: {e}")
 
         return None
 
@@ -383,7 +385,7 @@ class LyricFinder:
                     print(f"Failed to load {manifestPath}: error: {e}")
                     continue
 
-                delete = []
+                delete = set()
                 clean = []
                 for track in tracks:
                     if not track.get("lyricsFound") or not track.get("syncedLyrics"):

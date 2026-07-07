@@ -5,7 +5,6 @@ from piper import PiperVoice
 import wave
 import subprocess
 
-
 class TTS:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
