@@ -78,9 +78,9 @@ class RVCGenerator:
         print(f"Finished training {artist} model. Weights are saved to {exportDir}")
         return True
 
-
     def exportModels(self, artist):
         pass
+
 
 
 

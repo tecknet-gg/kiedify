@@ -60,9 +60,33 @@ class RVC:
                 rms_mix_rate=0.25,
                 protect=0.33
             )
+            self.convertToMP3(pthPath, outputPath)
+
             return True
         except Exception as e:
             print(f"Failed to synthesize: {e}")
+            return False
+
+    def convertToMP3(self, inputWav, outputMP3, delete=True):
+        print(f"Converting {inputWav} to {outputMP3}")
+
+        ffmpegCmd = [
+            "ffmpeg", "-y",
+            "-i", inputWav,
+            "-code:a", "libmp3lame",
+            "-q:a", "2",
+            outputMP3,
+        ]
+
+        try:
+            subprocess.run(ffmpegCmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Successfully converted {inputWav} to {outputMP3}")
+            if delete and os.path.exists(inputWav):
+                os.remove(inputWav)
+                print(f"Cleaned up {inputWav}")
+            return outputMP3
+        except Exception as e:
+            print(f"Failed to convert {inputWav} to {outputMP3}: {e}")
             return False
 
 
