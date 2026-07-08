@@ -15,13 +15,17 @@ class LyricFinder:
     def __init__(self, dir = "/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.musicDir = dir
         self.lyricsQueue = Queue()
-
-        self.lock = threading.Lock()
         self.URL = "https://lrclib.net/api/search"
+        self.URLFallback = ""
 
         self.headers = {
             "User-Agent": "kiedify/v0.1 (https://github.com/tecknet-gg/kiedify; <hattijeevan@gmail.com>)",
         }
+
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
+
+        self.apiSephamore = threading.Semaphore(2)
 
         self.length = 0
         self.processed = 0
@@ -32,11 +36,10 @@ class LyricFinder:
         if not text:
             return ""
 
-        clean = text.lower()
-
+        clean = re.sub(r'[\(\[][^)]*(?:remaster|demo|live|version|edit|take|mix)[^)]*[\)\]]', "", text, flags=re.IGNORECASE)
+        clean = clean.split(" - ")[0].lower()
         clean = clean.replace("&", "and")
-        clean = "".join(char for char in clean if char.isalnum())
-        return clean
+        return "".join(char for char in clean if char.isalnum())
 
     def injectDuration(self):
         print("Injecting duration metadata")
@@ -160,9 +163,9 @@ class LyricFinder:
 
     def getLyrics(self):
         while True:
-            time.sleep(1)
+            time.sleep(0.5)
             try:
-                songName, artist, duration, attempts = self.lyricsQueue.get(timeout=1)
+                songName, artist, duration, attempts = self.lyricsQueue.get(timeout=10)
             except Empty:
                 print("Queue empty, exiting.")
                 return
@@ -171,27 +174,32 @@ class LyricFinder:
                 print(f"Querying LRC lib for {songName} by {artist}")
                 print(f"songName: {songName}, artist: {artist}, duration: {duration}, attempts: {attempts}")
                 data = self.queryLyric(songName, artist, duration, attempts)
+
                 if data:
                     print(f"Lyrics found for {songName}")
                     self.saveToJson(artist, songName, data)
                 else:
-                    print(f"No lyrics found for {songName}")
+                    data = self.queryFallback(artist, songName, 0)
+                    if data is not None:
+                        print(f"Lyrics found for {songName} using fallback source")
+                    else:
+                        print(f"No lyrics found for {songName}")
 
                 self.lyricsQueue.task_done()
-
 
             except Exception as e:
                 print(f"Failed to query lyric server: {e}")
                 attempts += 1
+
+                if attempts<5:
+                    time.sleep(5)
+                    print(f"Retry number {attempts}/{5} for {songName} by {artist}")
+                    self.lyricsQueue.put((songName, artist, duration, attempts))
+                else:
+                    print(f"Retrying {songName} - attempt {attempts} of 5.")
+
                 self.lyricsQueue.task_done()
 
-
-                if attempts > 4:
-                    print(f"Failed to query lyric server for {songName} by {artist} after 5 attempts.")
-                    continue
-
-                print(f"Retrying {songName} - attempt {attempts} of 5.")
-                self.lyricsQueue.put((songName, artist, duration, attempts))
 
     def parseSyncedLyrics(self, lyrics):
         parsedLyrics = []
@@ -255,7 +263,7 @@ class LyricFinder:
             print(f"Missing artist manifest: {artist}")
             return
 
-        with self.lock:
+        with self.apiSephamore:
             try:
                 with open(manifestPath, "r") as f:
                     tracks = json.load(f)
@@ -299,7 +307,6 @@ class LyricFinder:
                     print(f"Failed to save {manifestPath}: error: {e}")
 
     def queryLyric(self, songName, artist, duration, attempts):
-
         cleanTitle = re.sub(
             r'[\(\[][^)]*(?:remaster|demo|live|version|edit|take|mix)[^)]*[\)\]]',
             "",
@@ -315,7 +322,7 @@ class LyricFinder:
         }
 
         try:
-            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=7)
+            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, list) and len(data) > 0:
@@ -324,7 +331,7 @@ class LyricFinder:
             fallback = f"{cleanTitle} {artist}".replace("'", "").replace('"', "")
             payload = {"q": fallback}
 
-            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=7)
+            response = requests.get(self.URL, headers=self.headers, params=payload, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, list) and len(data) > 0:
@@ -334,6 +341,9 @@ class LyricFinder:
             print(f"Failed to query {songName}: {e}")
 
         return None
+
+    def queryFallback(self, artist, songName, attempts):
+        pass
 
     def gatherMulithreaded(self, nthreads=15):
         threads = []
@@ -389,8 +399,8 @@ class LyricFinder:
                 clean = []
                 for track in tracks:
                     if not track.get("lyricsFound") or not track.get("syncedLyrics"):
-                        delete.append(track["title"])
-                        print(f"Deleting {track['title']} for not having lyrics/sycned lyrics")
+                        delete.add(track["title"])
+                        print(f"Deleting {track['title']} for not having lyrics/sycned lyrics") #reroute via different api + parsing backend
                         continue
                     else:
                         clean.append(track)

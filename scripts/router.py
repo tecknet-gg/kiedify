@@ -188,10 +188,10 @@ if __name__ == "__main__":
     #router.downloadArtists(artists[2:3], qty=5)
     #router.downloadArtists(artists[5:], qty=5)
 
-    router.preprocessAll(nthreads=2)
+    #router.preprocessAll(nthreads=2)
 
-    #router.ammendMetadata()
-    #router.sourceLyrics()
+    router.ammendMetadata()
+    router.sourceLyrics()
 
     #router.postClean()
 
