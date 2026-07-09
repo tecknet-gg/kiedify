@@ -61,7 +61,6 @@ class RVC:
                 protect=0.33
             )
             self.convertToMP3(pthPath, outputPath)
-
             return True
         except Exception as e:
             print(f"Failed to synthesize: {e}")

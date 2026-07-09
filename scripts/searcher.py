@@ -315,14 +315,14 @@ class Searcher:
                 cursor += matchCount
             else:
                 print("Couldn't find word")
-                #marked for phoneme stitching
+                #marked for RVC stitching
                 stitchInstructions.append({
                     "text": query[cursor],
                     "title": None,
                     "audioPath": None,
                     "startTime": None,
                     "endTime": None,
-                    "mode": "phoneme"
+                    "mode": "rvc"
                 })
                 cursor += 1
         return stitchInstructions

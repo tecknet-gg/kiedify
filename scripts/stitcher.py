@@ -7,6 +7,8 @@ from pydub import AudioSegment
 from pydub.scipy_effects import high_pass_filter
 from pydub.effects import normalize
 
+#import rvc proxy class or something to run inference
+
 
 class Stitcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -26,13 +28,23 @@ class Stitcher:
             audioPath = item.get("audioPath")
             startTime = item.get("startTime")
             endTime = item.get("endTime")
+            mode = item.get("mode")
 
             crossfade = item.get("crossfade", 0.0)
             crossfade = int(crossfade * 1000)
 
-            if not audioPath or not os.path.exists(audioPath):
-                print(f"Skipping {text} as audioPath is missing or audio file doesn't exist")
+            if (not audioPath or not os.path.exists(audioPath)) and mode == "basic":
+                print(f"Skipping {text} as audioPath is missing or audio file doesn't exist, and RVC patching is disabled.")
                 continue
+
+            if mode == "rvc":
+                pass
+
+
+                #generate f{text}temp.mp3
+                #store path
+                #audioPath = path
+                #startTime = 0.0, endTime = get duration of clip, and end there
 
             if audioPath not in audioCache:
                 try:

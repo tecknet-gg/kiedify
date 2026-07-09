@@ -22,7 +22,7 @@ Progress:
 - [x] RVC Model Training
 - [ ] RVC Inference
 - [x] Reverse Transcription Checks (Using Cloud Models) (Scrapped)
-- [ ] API Routing
+- [ ] API Routing (Started)
 - [x] Pipeline Polishing 
 - [ ] Backend Deployment
 - [ ] Frontend
