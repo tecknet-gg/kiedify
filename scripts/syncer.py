@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from scipy.signal import butter, filtfilt
 import numpy as np
+import re
 
 
 class Syncer:
@@ -183,7 +184,7 @@ class Syncer:
                 cleanedSegments.append({
                     "text": segment["text"],
                     "start": max(0.0, segment["start"] - 0.1),
-                    "end": seg["end"] + 0.1
+                    "end": segment["end"] + 0.1
                 })
 
 
@@ -234,9 +235,8 @@ class Syncer:
                 chunkStart = line["start"]
 
             currentChunk.append(line)
-            chunkEnd = line["end"]
 
-            if (chunkEnd-chunkStart)>=maxDuration:
+            if (line["end"] - chunkStart) >= maxDuration:
                 chunks.append({
                     "text": " ".join(line["text"] for line in currentChunk),
                     "start": chunkStart,
@@ -245,12 +245,13 @@ class Syncer:
                 currentChunk = []
                 chunkStart = None
 
-        if currentChunk:
-            chunks.append({
-                "text": " ".join(line["text"] for line in currentChunk),
-                "start": chunkStart,
-                "end": chunkEnd,
-            })
+
+            if currentChunk:
+                chunks.append({
+                    "text": " ".join(line["text"] for line in currentChunk),
+                    "start": currentChunk[0]["start"],
+                    "end": currentChunk[-1]["end"]
+                })
 
         return chunks
 

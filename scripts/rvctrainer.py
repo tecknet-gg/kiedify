@@ -85,8 +85,6 @@ class RVCGenerator:
 
 
 if __name__ == "__main__":
-    #run script from terminal after switching to .venvRVC
-
     rvc = RVCGenerator()
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     rvc.trainArtist(artist=artist[0], epochs=200, batchSize=8)

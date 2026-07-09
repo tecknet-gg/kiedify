@@ -1,4 +1,5 @@
 import os
+from cgitb import text
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -12,6 +13,7 @@ from cleaner import Cleaner
 from syncer import Syncer
 from dataset import DatasetGenerator
 import subprocess
+import re
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
@@ -40,7 +42,7 @@ class Router:
         self.ttsgenerator = TTSGenerator(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
         self.syncer = Syncer(dir=self.musicDir)
-        #self.cleaner = Cleaner(dir=self.musicDir)
+        self.cleaner = Cleaner(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
@@ -77,7 +79,6 @@ class Router:
     def sourceLyrics(self, nthreads=15):
         self.lyrics.generateQueue()
         self.lyrics.gatherMulithreaded(nthreads=nthreads)
-        self.lyrics.lyricsQueue.join()
         self.lyrics.cleanLyricless()
 
     def ammendMetadata(self):
@@ -174,6 +175,11 @@ class Router:
             print(f"Error generating {finalRVCWav} - {e}")
             return False
 
+    def apiMatch(self, text, artist, patching=True, mode="fuzzy"):
+        pass
+
+    #make sure you hint to the existence of TTS, Phoneme Graph Traversal and Semantic Matching, but not exposed to the API due to compute
+
 
 
 
@@ -190,12 +196,12 @@ if __name__ == "__main__":
 
     #router.preprocessAll(nthreads=2)
 
-    router.ammendMetadata()
-    router.sourceLyrics()
+    #router.ammendMetadata()
+    #router.sourceLyrics()
 
     #router.postClean()
 
-    #router.syncAll()
+    router.syncAll()
 
     #router.secondPass()
 

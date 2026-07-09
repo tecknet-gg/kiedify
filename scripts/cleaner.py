@@ -80,7 +80,7 @@ class Cleaner:
                 if os.path.exists(tempOutputPath):
                     os.remove(tempOutputPath)
 
-    def cleanAristCorpus(self, artist, tolerance=0.75):
+    def cleanAristCorpus(self, artist, tolerance=5.0):
 
         processedDir = os.path.join(self.musicDir, "Processed", artist)
         manifestPath = os.path.join(processedDir, f"{artist}Synced.json")
@@ -151,12 +151,13 @@ class Cleaner:
 
                         originalStart = float(officialWords[offIdx]["start"])
                         whStart = float(whisperWords[whIdx]["start"])
+                        whEnd = float(whisperWords[whIdx]["end"])
 
                         if abs(whStart - originalStart) <= tolerance:
                             verifiedWords.append({
                                 "word": officialWords[offIdx]["word"],
                                 "start": round(whStart, 4),
-                                "end": round(float(whisperWords[whIdx]["end"], 4))
+                                "end": round(whEnd, 4)
                             })
                         else:
                             verifiedWords.append(officialWords[offIdx])
