@@ -9,7 +9,6 @@ from directory import DirectoryManager
 from lyrics import LyricFinder
 from tts import TTSGenerator
 from ttsinference import TTS
-from cleaner import Cleaner
 from syncer import Syncer
 from dataset import DatasetGenerator
 import subprocess
@@ -42,10 +41,9 @@ class Router:
         self.ttsgenerator = TTSGenerator(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
         self.syncer = Syncer(dir=self.musicDir)
-        self.cleaner = Cleaner(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
 
-    def basicMatch(self, text, artist, fuzzy=True, patchingMode=None, rtc=True):
+    def basicMatch(self, text, artist, fuzzy=True, patchingMode=None):
         if fuzzy:
             stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy")
         else:
@@ -114,6 +112,8 @@ class Router:
         self.tts.synthesise(text, artist, fileName=fileName)
 
     def secondPass(self, nthreads=3):
+        from cleaner import Cleaner
+        self.cleaner = Cleaner(dir=self.musicDir)
         self.cleaner.cleanAll(nthreads=nthreads)
 
     def syncAll(self):
@@ -131,45 +131,64 @@ class Router:
             self.dataset.pruneDataset(artist, target=target)
 
     def rvc(self, text, artist, fileName="output.txt", ttsMode="local"):
+        artistKey = artist.lower()
         gender = self.genders[self.artists.index(artist)]
 
         sitchedDir = os.path.join(self.musicDir, "Stitched")
         os.makedirs(sitchedDir, exist_ok=True)
 
         ttsTemp = f"{fileName}_temp"
-        ttsWav = os.path.join(sitchedDir, f"{ttsTemp}.wav")
 
+        ttsWav = os.path.join(sitchedDir, f"{ttsTemp}.wav")
         finalRVCWav = os.path.join(sitchedDir, f"{fileName}.wav")
+        finalRVCMP3 = os.path.join(sitchedDir, f"{fileName}.mp3")
+
+
         print(f"Generate base tts: {ttsTemp}")
-        self.tts.synthesise(text, artist, fileName=ttsTemp)
+        self.tts.synthesise(text, artist, fileName=ttsWav)
 
         rootDir = self.musicDir.rsplit("/", 1)[0]
         rvcPython = os.path.join(rootDir, "venvRVC", "bin", "python")
         workerScript = os.path.join(rootDir, "scripts", "rvcinference.py")
 
         if gender == "female":
-            pitch=None
+            pitch = 0
         if gender == "male":
-            pitch=None
+            pitch = 0
         else:
-            pitch = None
+            pitch = 0
 
         cmd = [
             rvcPython, workerScript,
             "--artist", artist.lower(),
             "--input", ttsWav,
             "--output", finalRVCWav,
-            "--ttsMode", str(pitch),
+            "--pitch", str(pitch),
         ]
 
         try:
-            subprocess.run(cmd)
+            subprocess.run(cmd, check=True)
             print(f"Generated {finalRVCWav}")
             if os.path.exists(finalRVCWav):
-                os.remove(finalRVCWav)
 
-            #convert to mp3
-            #return mp3 path
+                ffmpegCmd = [
+                    "ffmpeg", "-y",
+                    "-i", finalRVCWav,
+                    "-c:a", "libmp3lame",
+                    "-q:a", "2",
+                    finalRVCMP3,
+                ]
+                subprocess.run(ffmpegCmd, check=True)
+                os.remove(finalRVCWav)
+                if os.path.exists(ttsWav):
+                    os.remove(ttsWav)
+
+                print(f"Exported {finalRVCWav} as {finalRVCMP3}")
+                return finalRVCWav
+            else:
+                print(f"Conversion subprocess ran, but no output file found")
+                return False
+
 
         except subprocess.CalledProcessError as e:
             print(f"Error generating {finalRVCWav} - {e}")
@@ -186,12 +205,10 @@ class Router:
 if __name__ == "__main__":
     artists = ["Weezer", "Red Hot Chili Peppers","The Dismemberment Plan", "The Pretenders", "Fleetwood Mac", "Paramore"]
     genders = ["male", "male", "male", "female", "female", "female"]
-    artists = tuple(zip(artists, genders))
-    router = Router(artists=artists)
+    artistsMeta = tuple(zip(artists, genders))
+    router = Router(artists=artistsMeta)
     #router.rvc("The Pretenders", "The Pretenders")
 
-
-    #router.downloadArtists(artists[2:3], qty=5)
     #router.downloadArtists(artists[5:], qty=5)
 
     #router.preprocessAll(nthreads=2)
@@ -201,13 +218,16 @@ if __name__ == "__main__":
 
     #router.postClean()
 
-    router.syncAll()
+    #router.syncAll()
+
 
     #router.secondPass()
 
-    #router.generateDataset(artists)
-    #router.pruneDataset(artists, target=5)
-    #router.downloadTTSBases()
+    #router.generateDatasets(artists)
+    #router.pruneDataset(artists, target=1)
+    #router.downloadRVCBases()
+
+    #router.basicMatch(text="lets try that again shall we", artist="Weezer")
 
     '''
     for i, artist in enumerate(artists):

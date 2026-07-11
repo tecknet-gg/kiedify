@@ -1,4 +1,7 @@
 import os
+import json
+import re
+import subprocess
 
 class DatasetGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -22,6 +25,11 @@ class DatasetGenerator:
         except subprocess.CalledProcessError as e:
             print(f"Failed to convert {audioPath}: {e}")
             return False
+
+    def cleanText(self, text):
+        text = text.lower().strip()
+        text = re.sub(r'[()\[\]{}.,!?;\"]', '', text)
+        return text.replace('-', ' ')
 
     def sliceWAV(self, audioPath, start, end, outputPath):
         duration = end-start

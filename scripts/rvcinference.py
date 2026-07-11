@@ -1,8 +1,14 @@
+from rvc.tools.onnx_inference_demo import f0_method
+
+
 class RVC:
     def __init__(self, dir="/Users/jeevan/Documents/Python/Music"):
         self.dir = dir
         self.modelsDir = os.path.join(self.dir, "models", "rvc")
         self.index = {}
+
+        self.vc = None
+        self.netG = None
 
     def indexModels(self):
         print("Indexing models")
@@ -24,7 +30,7 @@ class RVC:
                 artist = artist.split("-")[1].lower()
 
             parentDir = os.path.dirname(pthPath)
-            indexPattern = os.path.join(patternDir, "*.index")
+            indexPattern = os.path.join(parentDir, "*.index")
             indexFiles = glob.glob(indexPattern)
             indexPath = indexFiles[0] if indexFiles else ""
 
@@ -44,6 +50,8 @@ class RVC:
         pthPath = self.index[artistKey]["pth"]
         indexPath = self.index[artistKey]["index"]
 
+        tempWavOutput = os.path.join(self.dir, "temp.wav")
+
         print(f"Processing target voice")
 
         try:
@@ -52,15 +60,16 @@ class RVC:
                 input_audio_path=inputPath,
                 f0_up_key=pitchChange,
                 f0_file=None,
+                f0_method=f0_method,
                 file_index=indexPath,
                 file_index2="",
-                index_rate="",
+                index_rate="0.75",
                 filter_radius=3,
                 resample_sr=0,
                 rms_mix_rate=0.25,
                 protect=0.33
             )
-            self.convertToMP3(pthPath, outputPath)
+            self.convertToMP3(pthPath, outputPath, delete=True)
             return True
         except Exception as e:
             print(f"Failed to synthesize: {e}")
@@ -72,7 +81,7 @@ class RVC:
         ffmpegCmd = [
             "ffmpeg", "-y",
             "-i", inputWav,
-            "-code:a", "libmp3lame",
+            "-c:a", "libmp3lame",
             "-q:a", "2",
             outputMP3,
         ]
