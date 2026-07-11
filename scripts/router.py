@@ -151,12 +151,13 @@ class Router:
         rvcPython = os.path.join(rootDir, "venvRVC", "bin", "python")
         workerScript = os.path.join(rootDir, "scripts", "rvcinference.py")
 
+
+        pitch = 0
         if gender == "female":
             pitch = 0
         if gender == "male":
             pitch = 0
-        else:
-            pitch = 0
+
 
         cmd = [
             rvcPython, workerScript,
@@ -178,13 +179,13 @@ class Router:
                     "-q:a", "2",
                     finalRVCMP3,
                 ]
-                subprocess.run(ffmpegCmd, check=True)
+                subprocess.run(ffmpegCmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 os.remove(finalRVCWav)
                 if os.path.exists(ttsWav):
                     os.remove(ttsWav)
 
                 print(f"Exported {finalRVCWav} as {finalRVCMP3}")
-                return finalRVCWav
+                return finalRVCMP3
             else:
                 print(f"Conversion subprocess ran, but no output file found")
                 return False

@@ -55,7 +55,7 @@ class RVC:
         print(f"Processing target voice")
 
         try:
-            vc_single(
+            message, audioOut = vc_single(
                 sid=0,
                 input_audio_path=inputPath,
                 f0_up_key=pitchChange,
@@ -63,13 +63,17 @@ class RVC:
                 f0_method=f0_method,
                 file_index=indexPath,
                 file_index2="",
-                index_rate="0.75",
+                index_rate=0.75,
                 filter_radius=3,
                 resample_sr=0,
                 rms_mix_rate=0.25,
                 protect=0.33
             )
-            self.convertToMP3(pthPath, outputPath, delete=True)
+
+            targetSr, audioData = audioOut
+            wavfile.write(tempWavOutput, targetSr, audioData)
+
+            self.convertToMP3(tempWavOutput, outputPath, delete=True)
             return True
         except Exception as e:
             print(f"Failed to synthesize: {e}")
