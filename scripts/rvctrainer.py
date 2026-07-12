@@ -14,6 +14,8 @@ class RVCGenerator:
         self.modelsRoot = os.path.join(self.musicDir, "models")
         self.rvcModels = os.path.join(self.modelsRoot, "rvc")
 
+        os.makedirs(self.rvcModels, exist_ok=True)
+
         os.makedirs(self.rvcRoot, exist_ok=True)
         load_dotenv()
 
@@ -21,6 +23,8 @@ class RVCGenerator:
         print(f"Downloading RVC v2 bases")
 
         rmvpeDir = os.path.join(self.rvcRoot, "assets", "rmvpe")
+        hubertDir = os.path.join(self.rvcRoot, "assets", "hubert")
+
         os.makedirs(rmvpeDir, exist_ok=True)
 
 
@@ -29,7 +33,9 @@ class RVCGenerator:
             os.path.join(self.rvcModels, "hubert.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
             os.path.join(self.rvcModels, "f0D40k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0D40k.pth",
             os.path.join(self.rvcModels, "f0G40k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0G40k.pth",
-            os.path.join(rmvpeDir, "rmvpe.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
+            os.path.join(rmvpeDir, "rmvpe.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt",
+
+            os.path.join(hubertDir, "hubert_base.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
         }
         for path, modelUrl in models.items():
             modelName = os.path.basename(path)
@@ -45,9 +51,13 @@ class RVCGenerator:
 
 
     def runCommand(self, command):
-        result = subprocess.run(command, cwd=self.rvcRoot)
+        print(f"Running : {command}")
+
+        result = subprocess.run(command, cwd=self.rvcRoot, capture_output=True, text=True)
+        print(result.stdout)
+        print(result.stderr)
+
         if result.returncode != 0:
-            print(f"Failed to run command: {command}")
             raise RuntimeError(f"Failed to run command: {command}")
 
     def trainArtist(self, artist, epochs=200, batchSize=8):
@@ -64,7 +74,7 @@ class RVCGenerator:
         print(f"Training {artist}'s RVC model.")
 
         preprocess = [
-            "python", "infer/modules/train/preprocess.py",
+            sys.executable, "infer/modules/train/preprocess.py",
             datasetDir,
             "40000",
             "4",
@@ -77,7 +87,7 @@ class RVCGenerator:
         self.runCommand(preprocess)
 
         featureExtraction1 = [
-            "python", "infer/modules/train/extract/extract_f0_print.py",
+            sys.executable, "infer/modules/train/extract/extract_f0_print.py",
             f"logs/{expName}",
             "4",
             "rmvpe"
@@ -86,18 +96,19 @@ class RVCGenerator:
         self.runCommand(featureExtraction1)
 
         featureExtraction2 = [
-            "python", "infer/modules/train/extract/extract_feature_print.py",
-            "mps", #cpu if not supported
+            sys.executable, "infer/modules/train/extract_feature_print.py",
+            "cpu", #cpu if not supported
             "1",
             "0",
-            "0",
-            f"logs/{expName}"
+            f"logs/{expName}",
+            "v2",
+            "False"
         ]
 
         self.runCommand(featureExtraction2)
 
         train = [
-            "python", "infer/modules/train/train.py",
+            sys.executable, "infer/modules/train/train.py",
             "-e", expName,
             "-sr", "40k",
             "-f0", "1",
@@ -152,5 +163,8 @@ if __name__ == "__main__":
     rvc = RVCGenerator()
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     rvc.downloadBases()
-    rvc.trainArtist(artist=artists[0], epochs=200, batchSize=8)
+
+    for artist in artists:
+        rvc.trainArtist(artist, epochs=200, batchSize=8)
+
     #rvc.exportModel(artists[0])
