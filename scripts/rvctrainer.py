@@ -53,9 +53,7 @@ class RVCGenerator:
     def runCommand(self, command):
         print(f"Running : {command}")
 
-        result = subprocess.run(command, cwd=self.rvcRoot, capture_output=True, text=True)
-        print(result.stdout)
-        print(result.stderr)
+        result = subprocess.run(command, cwd=self.rvcRoot)
 
         if result.returncode != 0:
             raise RuntimeError(f"Failed to run command: {command}")
@@ -106,6 +104,16 @@ class RVCGenerator:
         ]
 
         self.runCommand(featureExtraction2)
+
+
+        sourceConfig = os.path.join(self.rvcRoot, "configs", "v2", "48k.json")
+        destConfig = os.path.join(logDir, "config.json")
+
+        if os.path.exists(sourceConfig):
+            shutil.copy(sourceConfig, destConfig)
+            print(f"Moved 48k config json to {destConfig}")
+        else:
+            raise FileNotFoundError(f"Failed to find {sourceConfig}")
 
         train = [
             sys.executable, "infer/modules/train/train.py",

@@ -1,4 +1,17 @@
+import os
+import sys
+
+scriptDir = os.path.dirname(os.path.realpath(__file__))
+projectRoot = os.path.abspath(os.path.join(scriptDir, ".."))
+
+if projectRoot not in sys.path:
+    sys.path.insert(0, projectRoot) #fix env runtime issue
+
+import glob
+import subprocess
+from scipy.io import wavfile
 from rvc.tools.onnx_inference_demo import f0_method
+from rvc.modules.vc.modules import vc_single
 
 
 class RVC:
