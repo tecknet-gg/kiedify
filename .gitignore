@@ -1,3 +1,6 @@
-/Music/
 /reprecated/
-/piper/
+/piper/.venv/
+.venvRVC/
+venv/
+**/__pycache__/
+*.DS_Store

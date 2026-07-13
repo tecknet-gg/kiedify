@@ -1,11 +1,12 @@
 import os
 import uuid
 import threading
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import queue
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
 from router import Router
 app = FastAPI(title="Kiedify", version="0.1")
 musicDir = os.getcwd().replace("scripts", "Music")
@@ -24,12 +25,20 @@ router = Router(dir=musicDir, artists=artists)
 tasks: Dict[str, str] = {}
 executionQueue = queue.Queue()
 
+taskFiles: Dict[str, str] = {}
+
 class GenerationRequest(BaseModel):
     options: Dict[str, Any]
 
 def processingWorker():
     while True:
-        pass
+        taskId, options = executionQueue.get()
+        tasks[taskId] = "processing"
+        print(f"Worker {taskId} started")
+
+        artist = options.get()
+
+
     # parse the options and route everything to generate the resultant file
 
 workerThread = threading.thread(target=processingWorker, daemon=True)

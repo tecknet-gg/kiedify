@@ -31,8 +31,8 @@ class RVCGenerator:
 
         models = {
             os.path.join(self.rvcModels, "hubert.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
-            os.path.join(self.rvcModels, "f0D40k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0D40k.pth",
-            os.path.join(self.rvcModels, "f0G40k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0G40k.pth",
+            os.path.join(self.rvcModels, "f0D48k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/pretrained_v2/f0D48k.pth",
+            os.path.join(self.rvcModels, "f0G48k.pth"): "https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/pretrained_v2/f0G48k.pth",
             os.path.join(rmvpeDir, "rmvpe.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt",
 
             os.path.join(hubertDir, "hubert_base.pt"): "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt",
@@ -74,7 +74,7 @@ class RVCGenerator:
         preprocess = [
             sys.executable, "infer/modules/train/preprocess.py",
             datasetDir,
-            "40000",
+            "48000",
             "4",
             f"logs/{expName}",
             "False",
@@ -98,6 +98,7 @@ class RVCGenerator:
             "cpu", #cpu if not supported
             "1",
             "0",
+            "0",
             f"logs/{expName}",
             "v2",
             "False"
@@ -118,18 +119,20 @@ class RVCGenerator:
         train = [
             sys.executable, "infer/modules/train/train.py",
             "-e", expName,
-            "-sr", "40k",
+            "-sr", "48k",
             "-f0", "1",
             "-bs", str(batchSize),
             "-te", str(epochs),
             "-se", "10", #save checkpoints
-            "-pg", os.path.join(self.rvcModels, "f0G40k.pth"),
-            "-pd", os.path.join(self.rvcModels, "f0D40k.pth"),
+            "-pg", os.path.join(self.rvcModels, "f0G48k.pth"),
+            "-pd", os.path.join(self.rvcModels, "f0D48k.pth"),
             "-l", "1",
             "-c", "0",
             "-sw", "1",
             "-v", "v2"
         ]
+
+        self.createFileList(expName)
 
         self.runCommand(train)
         print(f"Finished training {artist}'s RVC model.")
@@ -167,12 +170,51 @@ class RVCGenerator:
         else:
             print(f"Failed to export {artist}'s RVC model to {destination}")
 
+
+    def createFileList(self, expName, version="v2", spkId=0):
+        expDir = os.path.join(self.rvcRoot, "logs", expName)
+        gtWavsDir = os.path.join(expDir, "0_gt_wavs")
+        featureDir = os.path.join(expDir, "3_feature768")
+
+        f0Dir = os.path.join(expDir, "2a_f0")
+        f0nsfDir = os.path.join(expDir, "2b-f0nsf")
+
+        names = (
+                set(name.split(".")[0] for name in os.listdir(gtWavsDir))
+                &
+                set(name.split(".")[0] for name in os.listdir(featureDir))
+                &
+                set(name.split(".")[0] for name in os.listdir(f0Dir))
+                &
+                set(name.split(".")[0] for name in os.listdir(f0nsfDir))
+        )
+
+        filelist = []
+
+        for name in names:
+            filelist.append(
+                f"{gtWavsDir}/{name}.wav|"
+                f"{featureDir}/{name}.npy|"
+                f"{f0Dir}/{name}.wav.npy|"
+                f"{f0nsfDir}/{name}.wav.npy|"
+                f"{spkId}"
+            )
+
+        filelistPath = os.path.join(expDir, "filelist.txt")
+
+        with open(filelistPath, "w", encoding="utf-8") as f:
+            f.write("\n".join(filelist))
+
+        print(f"Created {len(filelist)} filelist.")
+
 if __name__ == "__main__":
     rvc = RVCGenerator()
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     rvc.downloadBases()
 
-    for artist in artists:
-        rvc.trainArtist(artist, epochs=200, batchSize=8)
+    rvc.trainArtist(artists[0], epochs=200, batchSize=8)
+
+    #for artist in artists:
+        #rvc.trainArtist(artist, epochs=200, batchSize=8)
 
     #rvc.exportModel(artists[0])
