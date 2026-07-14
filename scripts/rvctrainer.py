@@ -212,9 +212,12 @@ if __name__ == "__main__":
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     rvc.downloadBases()
 
-    rvc.trainArtist(artists[0], epochs=200, batchSize=8)
+    #rvc.trainArtist(artists[0], epochs=200, batchSize=8)
 
-    #for artist in artists:
-        #rvc.trainArtist(artist, epochs=200, batchSize=8)
+    for i, artist in enumerate(artists):
+        if i == 0:
+            continue
+        rvc.trainArtist(artist, epochs=200, batchSize=8)
+        rvc.exportModel(artist)
 
-    #rvc.exportModel(artists[0])
+

@@ -14,6 +14,7 @@ from dataset import DatasetGenerator
 import subprocess
 import re
 
+
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
 
@@ -134,21 +135,21 @@ class Router:
         artistKey = artist.lower()
         gender = self.genders[self.artists.index(artist)]
 
-        sitchedDir = os.path.join(self.musicDir, "Stitched")
-        os.makedirs(sitchedDir, exist_ok=True)
+        stitchedDir = os.path.join(self.musicDir, "Stitched")
+        os.makedirs(stitchedDir, exist_ok=True)
 
         ttsTemp = f"{fileName}_temp"
 
-        ttsWav = os.path.join(sitchedDir, f"{ttsTemp}.wav")
-        finalRVCWav = os.path.join(sitchedDir, f"{fileName}.wav")
-        finalRVCMP3 = os.path.join(sitchedDir, f"{fileName}.mp3")
+        ttsWav = os.path.join(stitchedDir, f"{ttsTemp}.wav")
+        finalRVCWav = os.path.join(stitchedDir, f"{fileName}.wav")
+        finalRVCMP3 = os.path.join(stitchedDir, f"{fileName}.mp3")
 
 
         print(f"Generate base tts: {ttsTemp}")
         self.tts.synthesise(text, artist, fileName=ttsWav)
 
         rootDir = self.musicDir.rsplit("/", 1)[0]
-        rvcPython = os.path.join(rootDir, "venvRVC", "bin", "python")
+        rvcPython = os.path.join(rootDir, ".venvRVC", "bin", "python")
         workerScript = os.path.join(rootDir, "scripts", "rvcinference.py")
 
 
@@ -156,7 +157,7 @@ class Router:
         if gender == "female":
             pitch = 0
         if gender == "male":
-            pitch = 0
+            pitch = -12
 
 
         cmd = [
@@ -208,6 +209,7 @@ if __name__ == "__main__":
     genders = ["male", "male", "male", "female", "female", "female"]
     artistsMeta = tuple(zip(artists, genders))
     router = Router(artists=artistsMeta)
+    router.rvc("Hello!", "Weezer", ttsMode="local")
     #router.rvc("The Pretenders", "The Pretenders")
 
     #router.downloadArtists(artists[5:], qty=5)

@@ -1,0 +1,284 @@
+import requests
+from queue import Queue
+import yt_dlp
+import json
+import os
+import shutil
+import threading
+import time
+
+class Downloader2:
+    def __init__(self, musicDir="/Users/jeevan/Documents/Python/MusicTTS/Music/Raw"):
+        self.baseURL = "https://api.deezer.com"
+        self.musicDir = musicDir
+        self.config = {}
+        self.installQueue = Queue()
+
+        self.passed = 0
+        self.failed = 0
+        self.manifestLock = threading.Lock()
+
+        try:
+            with open("config.json", "r") as f:
+                self.config = json.load(f)
+        except FileNotFoundError:
+            print("Config file missing")
+        except json.decoder.JSONDecodeError:
+            print("Config file invalid")
+
+        self.config = self.config.get("opt",{})
+
+
+        print("Initialised")
+
+    def getArtist(self, artist):
+        url = f"{self.baseURL}/search/artist"
+        result = requests.get(url, params={"q": artist}).json() #querying the artist from deezer
+
+        return result["data"][0]
+
+    def getTopAlbums(self, artist):
+        artist = self.getArtist(artist) #gets top albums
+        artistID = artist["id"]
+
+        url = f"{self.baseURL}/artist/{artistID}/albums"
+        result = requests.get(url, params={"limit": 100}).json()
+
+        albums = []
+
+        for album in result["data"]:
+            albums.append({"id": album["id"], "title": album["title"], "rank": album.get("fans", 0)})
+
+        albums.sort(key=self.sortByRank, reverse=True)
+        return albums
+
+    def sortByRank(self, item):
+        return item["rank"] #custom sort key to sort by item rank
+
+    def prettyPrint(self, albums):
+        print("Top albums:")
+        for i, album in enumerate(albums, 1):
+            print(f"{i}. {album['title']}")
+
+    def cleanDiscography(self, albums):
+        targets = ["version", "deluxe", "live", "compilation", "best", "hits", "commercial", "remix", "acoustic", "international", "practice", "session", "anniversary"]
+        clean = []
+        for album in albums:
+            title = album["title"].lower()
+            if not(any(elem in title for elem in targets)): #removes albums with said words
+                clean.append(album)
+
+        return clean
+
+    def getDiscog(self, artist, qty=10):
+        albums = self.getTopAlbums(artist)
+        albums = self.cleanDiscography(albums)
+
+        finalAlbums = []
+        length = len(albums) if len(albums) < qty else qty
+
+        for i in range(0, length):
+            finalAlbums.append(albums[i])
+
+        return finalAlbums
+
+    def getTrackList(self, album):
+        url = f"{self.baseURL}/album/{album['id']}"
+        data = requests.get(url).json()
+        tracks = data["tracks"]["data"]
+        for track in tracks:
+            print(f"Title: {track['title']} Artist: {track['artist']['name']} Link: {track['link']} Album: {track['album']['title']}")
+        return tracks
+
+    def assembleInstallQueue(self, tracks):
+        queue = Queue()
+        for track in tracks:
+            queue.put(track)
+        return queue
+
+    def installTracks(self, queue):
+        while not queue.empty():
+            track = queue.get()
+
+            title = track["title"]
+            artist = track["artist"]["name"]
+            album = track["album"]["title"]
+
+            query = f"{title} - {artist} Official Music Video"
+            outputDir = os.path.join(f"{self.musicDir}/{artist}/{album}", f"{title}")
+
+            options = self.config.copy()
+            options["outtmpl"] = outputDir
+
+            searchURL = f"ytsearch:{query}"
+            with yt_dlp.YoutubeDL(options) as ydl:
+                try:
+                    ydl.download([searchURL])
+                    print(f"Successfully downloaded {title}")
+
+                    with self.manifestLock:
+                        self.updateTrackPath(artist, album, title, outputDir)
+                    self.passed += 1 
+                except yt_dlp.DownloadError as error:
+                    print(f"Error downloading {title}: {error}")
+                    self.failed += 1
+
+    def updateTrackPath(self,deezerID , artist, album, outputDir):
+        albumDir = os.path.join(self.musicDir, artist, album)
+        manifestPath = os.path.join(albumDir, "album.json")
+
+        if not(os.path.exists(manifestPath)):
+            os.makerdirs(albumDir, exist_ok=True)
+            data = {
+                "artist": artist,
+                "album": album,
+                deezerID: None,
+                "tracks": []
+            }
+            return
+
+        try:
+            with open(manifestPath, r) as manifest:
+                data = json.load(manifest)
+
+                trackUpdate = False
+                for track in data.get("tracks", []):
+                    if track["title"].lower() == title.lower():
+                        track["file"] = outputDir
+                        trackUpdate = True
+                        break
+                if trackUpdate:
+                    with open(manifestPath, "w") as manifest:
+                        json.dump(data, manifest, indent=4)
+
+        except Exception as error:
+            print(f"Error updating manifest {error}")
+
+
+
+
+    def writeAlbumManifest(self, artist, album, tracks):
+        albumDir = os.path.join(self.musicDir, artist, album["title"])
+        os.makedirs(albumDir, exist_ok=True)
+
+        data = {
+            "artist": artist,
+            "album": album["title"],
+            "deezerId": album["id"],
+            "tracks": []
+        }
+
+        for i, track in enumerate(tracks):
+            data["tracks"].append({
+                "id": f"{artist}_{album['id']}_{i}",
+                "title": track["title"],
+                "trackNumber": i+1,
+                "deezerID": track["id"],
+                "file": None
+            })
+
+        with open(os.path.join(albumDir, f"album.json"), "w") as f:
+            json.dump(data, f, indent=4)
+
+
+    def artistToInstalled(self, artist, qty=10, nthreads=3):
+        albums = self.getDiscog(artist,qty=qty)
+        self.prettyPrint(albums)
+        self.passed = 0
+        self.failed = 0
+
+        for album in albums:
+            tracks = self.getTrackList(album)
+            self.writeAlbumManifest(artist,album,tracks)
+
+            for track in tracks:
+                self.installQueue.put(track)
+
+        threads = []
+        for i in range(nthreads):
+            thread = threading.Thread(target=self.installWorker)
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        print("Cleaning output")
+
+        self.cleanDir()
+
+
+
+        print("Done!")
+
+        return self.passed, self.failed
+
+    def installWorker(self):
+        self.installTracks(self.installQueue)
+
+    def cleanDir(self):
+        for artist in os.listdir(self.musicDir):
+            artistPath = os.path.join(self.musicDir, artist) #creating the ~/Raw/Weezer path
+            if not os.path.isdir(artistPath): #skip if doesn't exist
+                continue
+
+            for album in os.listdir(artistPath):
+                albumPath = os.path.join(artistPath, album)
+                if not os.path.isdir(albumPath):
+                    continue #same as before at the album level
+
+                for root, dirs, files in os.walk(albumPath, topdown=False):
+                    if root == albumPath: #skip is the root of every file is the same as the album's path
+                        continue
+
+                    for file in files:
+                        curentPath = ""
+                        targetPath = ""
+
+                        if file.endswith(".mp3"):
+                            currentPath = os.path.join(root, file)
+                            targetPath = os.path.join(albumPath, file) #targets the album root
+
+                        try:
+                            shutil.move(currentPath, targetPath)
+                        except shutil.Error as error:
+                            print(f"Error moving {currentPath} to {targetPath}: {error}")
+
+                        try:
+                            if not os.listdir(root):
+                                os.rmdir(root)
+                        except OSError as error:
+                            print(f"Error deleting empty directory: {error}")
+
+    def queueArtists(self,artists, qty=10, nthreads=3):
+        passed, failed = 0, 0
+        for artist in artists:
+            passed, failed  = self.artistToInstalled(artist, qty=qty, nthreads=nthreads)
+            self.passed += passed
+            self.failed += failed
+        return self.passed, self.failed
+
+
+
+
+if __name__ == "__main__":
+
+    #artists = ["Weezer", "Beatles", "Red Hot Chilli Peppers", "Paramore", "Avril Lavigne", "Laufey" ]
+    artists = []
+    if len(artists) == 0:
+        artist = input("Enter the artist: ")
+        numberAlbums = int(input("Enter the number of albums: "))
+        timeStart = time.perf_counter()
+        downloader = Downloader()
+        passed, failed = downloader.artistToInstalled(artist, qty=numberAlbums, nthreads=15)
+        timeEnd = time.perf_counter()
+    else:
+        timeStart = time.perf_counter()
+        downloader = Downloader()
+        passed, failed = downloader.queueArtists(artists, qty=10, nthreads=25)
+        timeEnd = time.perf_counter()
+
+    print(f"Download time: {round(timeEnd - timeStart, 2) } Successful: {passed} Failed: {failed}")
+    if passed!=0:
+        print(f"Time per song:{round((timeEnd - timeStart)/passed, 2)}")
+
