@@ -4,6 +4,7 @@ import subprocess
 import urllib.request
 from dotenv import load_dotenv
 import shutil
+import glob
 
 class RVCGenerator:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
@@ -136,7 +137,28 @@ class RVCGenerator:
 
         self.runCommand(train)
         print(f"Finished training {artist}'s RVC model.")
+        self.buildIndex(expName)
         return True
+
+    def buildIndex(self, expName):
+        print(f"Building index for {expName}")
+
+        featureDir = os.path.join(self.rvcRoot, "logs", expName, "3_feature768")
+
+        command = [
+            sys.executable,
+            "tools/infer/train-index.py",
+            featureDir
+        ]
+
+        self.runCommand(command)
+
+        generatedIndexes = glob.glob(os.path.join(self.rvcRoot, "logs", expName, "*.index"))
+
+        if generatedIndexes:
+            print(f"Successfully generated {len(generatedIndexes)} index files.")
+        else:
+            print(f"Failed to generate {len(generatedIndexes)} index files.")
 
 
     def exportModel(self, artist):
@@ -159,11 +181,14 @@ class RVCGenerator:
 
 
         if os.path.exists(rvcLogDir):
-            for file in os.listdir(rvcLogDir):
-                if file.endswith(".index") and "added" in file:
-                    shutil.copy(os.path.join(rvcLogDir, file), os.path.join(destination, file))
-                    print(f"Exported {artist}'s index file {file} to {destination}")
-                    exported = True
+            indexFiles = glob.glob(os.path.join(rvcLogDir, "*.index"), recursive=True)
+
+            for indexFile in indexFiles:
+                file = os.path.basename(indexFile)
+                shutil.copy(indexFile, os.path.join(destination, file))
+
+                print(f"Exported {artist}'s RVC model to {destination}")
+                exported = True
 
         if exported:
             print(f"Exported {artist}'s RVC model to {destination}")
@@ -212,12 +237,15 @@ if __name__ == "__main__":
     artists = ["Weezer", "Red Hot Chili Peppers", "The Pretenders", "Fleetwood Mac"]
     rvc.downloadBases()
 
-    #rvc.trainArtist(artists[0], epochs=200, batchSize=8)
+    rvc.trainArtist(artists[0], epochs=200, batchSize=8)
+    rvc.exportModel(artists[0])
 
+
+    '''
     for i, artist in enumerate(artists):
         if i == 0:
             continue
         rvc.trainArtist(artist, epochs=200, batchSize=8)
         rvc.exportModel(artist)
-
+    '''
 
