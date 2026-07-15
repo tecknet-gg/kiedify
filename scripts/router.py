@@ -1,5 +1,4 @@
 import os
-from cgitb import text
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -132,69 +131,7 @@ class Router:
             self.dataset.pruneDataset(artist, target=target)
 
     def rvc(self, text, artist, fileName="output.txt", ttsMode="local"):
-        artistKey = artist.lower()
-        gender = self.genders[self.artists.index(artist)]
-
-        stitchedDir = os.path.join(self.musicDir, "Stitched")
-        os.makedirs(stitchedDir, exist_ok=True)
-
-        ttsTemp = f"{fileName}_temp"
-
-        ttsWav = os.path.join(stitchedDir, f"{ttsTemp}.wav")
-        finalRVCWav = os.path.join(stitchedDir, f"{fileName}.wav")
-        finalRVCMP3 = os.path.join(stitchedDir, f"{fileName}.mp3")
-
-
-        print(f"Generate base tts: {ttsTemp}")
-        self.tts.synthesise(text, artist, fileName=ttsWav)
-
-        rootDir = self.musicDir.rsplit("/", 1)[0]
-        rvcPython = os.path.join(rootDir, ".venvRVC", "bin", "python")
-        workerScript = os.path.join(rootDir, "scripts", "rvcinference.py")
-
-
-        pitch = 0
-        if gender == "female":
-            pitch = 0
-        if gender == "male":
-            pitch = -12
-
-
-        cmd = [
-            rvcPython, workerScript,
-            "--artist", artist.lower(),
-            "--input", ttsWav,
-            "--output", finalRVCWav,
-            "--pitch", str(pitch),
-        ]
-
-        try:
-            subprocess.run(cmd, check=True)
-            print(f"Generated {finalRVCWav}")
-            if os.path.exists(finalRVCWav):
-
-                ffmpegCmd = [
-                    "ffmpeg", "-y",
-                    "-i", finalRVCWav,
-                    "-c:a", "libmp3lame",
-                    "-q:a", "2",
-                    finalRVCMP3,
-                ]
-                subprocess.run(ffmpegCmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                os.remove(finalRVCWav)
-                if os.path.exists(ttsWav):
-                    os.remove(ttsWav)
-
-                print(f"Exported {finalRVCWav} as {finalRVCMP3}")
-                return finalRVCMP3
-            else:
-                print(f"Conversion subprocess ran, but no output file found")
-                return False
-
-
-        except subprocess.CalledProcessError as e:
-            print(f"Error generating {finalRVCWav} - {e}")
-            return False
+        pass
 
     def apiMatch(self, text, artist, patching=True, mode="fuzzy"):
         pass
@@ -247,5 +184,6 @@ if __name__ == "__main__":
         router.generateRVCModel(artist)
     '''
 
+    router.basicMatch("hello", "Red Hot Chili Peppers")
 
 
