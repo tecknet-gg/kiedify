@@ -184,6 +184,6 @@ if __name__ == "__main__":
         router.generateRVCModel(artist)
     '''
 
-    router.basicMatch("hello", "Red Hot Chili Peppers")
+    router.basicMatch("hey guys how are we doing today", "Red Hot Chili Peppers")
 
 
