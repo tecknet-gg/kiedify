@@ -13,12 +13,15 @@ class RVCTrainer:
         targetDir = os.path.join(self.rootDir, "Applio", "assets", "datasets", artist)
         os.makedirs(targetDir, exist_ok=True)
 
-        source = os.path.join(self.musicDir, artist)
+        source = os.path.join(self.musicDir,"Processed" ,artist)
         if not os.path.exists(source):
+            print(f"{source}")
+            print(f"No source for {artist}")
             return False
 
         jsonFile = os.path.join(source, f"{artist}Synced.json")
         if not os.path.exists(jsonFile):
+            print(f"No json file for {artist}")
             return False
 
         print(f"Found {jsonFile}")
