@@ -8,11 +8,13 @@ from g2p_en import G2p
 import pydub
 from pydub import AudioSegment
 from rapidfuzz.distance.DamerauLevenshtein import similarity
+from tts import TTS
 
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
         self.processedDir = os.path.join(self.dir, "Processed")
+        self.tts = TTS()
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
@@ -313,16 +315,51 @@ class Searcher:
                 })
 
                 cursor += matchCount
-            else:
+            elif patching:
                 print("Couldn't find word")
-                #marked for RVC stitching
+                unmatched = query[cursor]
+                filename = f"{cursor}temp.mp3"
+                fallbackDir = os.path.join(self.dir, "Stitched", "Fallback")
+                os.makedirs(fallbackDir, exist_ok=True)
+
+                try:
+                    generatedPath = self.tts.ttsSynth(unmatched,filename)
+                    if generatedPath and os.path.exists(generatedPath):
+                        audio = AudioSegment.from_file(generatedPath)
+                        duration = len(audio) / 1000
+
+                    stitchInstructions.append({
+                        "text": unmatched,
+                        "title": "fallback",
+                        "audioPath": generatedPath,
+                        "startTime": 0.0,
+                        "endTime": duration,
+                        "mode": "rvc"
+                    })
+                    cursor += 1
+                    continue
+
+                except Exception as e:
+                    print(f"Error processing {unmatched}: {e}")
+                    stitchInstructions.append({
+                        "text": unmatchedWord,
+                        "title": None,
+                        "audioPath": None,
+                        "startTime": None,
+                        "endTime": None,
+                        "mode": "failed"
+                    })
+                    cursor += 1
+                    continue
+            else:
+                print(f"Error processing {unmatched}: {e}")
                 stitchInstructions.append({
-                    "text": query[cursor],
+                    "text": unmatchedWord,
                     "title": None,
                     "audioPath": None,
                     "startTime": None,
                     "endTime": None,
-                    "mode": "rvc"
+                "mode": "failed"
                 })
                 cursor += 1
         return stitchInstructions

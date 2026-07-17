@@ -10,6 +10,7 @@ class TTS:
         self.dir = dir
         self.modelsDir = os.path.join(self.dir, "models")
         self.index = {}
+        self.indexModels()
 
     def indexModels(self):
         self.index.clear()
@@ -67,6 +68,7 @@ class TTS:
             print(f"Successfully loaded {onnxPath}")
         except Exception as e:
             print(f"Failed to load {onnxPath}")
+            print(e)
 
         print(f"Generating audio from {text} to {wavPath}")
         try:
