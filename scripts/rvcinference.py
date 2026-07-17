@@ -13,5 +13,5 @@ class RVC:
             print(f"Missing models dir: {self.modelsDir}")
             return False
 
-    def synthesise(self):
+    def synthesise(self, gender):
         pass

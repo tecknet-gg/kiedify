@@ -12,7 +12,7 @@ from dataset import DatasetGenerator
 from rvctrainer import RVCTrainer
 import subprocess
 import re
-
+from tts import TTS
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
@@ -41,6 +41,7 @@ class Router:
         self.syncer = Syncer(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
         self.rvcTrainer = RVCTrainer(dir=self.musicDir)
+        self.tts = TTS(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None):
         if fuzzy:
@@ -56,6 +57,10 @@ class Router:
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
         return file
+
+    def ttsSynth(self, text, filename="output.mp3"):
+        self.tts.ttsSynth(text, filename)
+
 
     def rvcDataset(self, artist, duration=60):
         self.rvcTrainer.makeDataset(artist=artist, duration=duration)
@@ -101,18 +106,7 @@ class Router:
         success = self.phoneme.runMFA(artist)
         return success
 
-    def ttsSynth(self, text, filename="output.mp3"):
-        dir = os.path.join(self.musicDir, "Stitched")
-        outputPath = os.path.join(dir, filename)
 
-        try:
-            tts = gTTS(text=text, lang="en", slow=False)
-            tts.save(outputPath)
-            print(f"Successfully generated {outputPath}")
-            return outputPath
-        except Exception as e:
-            print(f"Failed to generate {outputPath}, {e}")
-            return None
 
     def secondPass(self, nthreads=3):
         from cleaner import Cleaner
@@ -133,7 +127,7 @@ class Router:
     def rvcSynth(self, text, artist, fileName="output.txt", ttsMode="local"):
         pass
 
-    def apiMatch(self, text, artist, patching=True, mode="fuzzy"):
+    def apiWorker(options):
         pass
 
     #make sure you hint to the existence of TTS, Phoneme Graph Traversal and Semantic Matching, but not exposed to the API due to compute
@@ -183,6 +177,7 @@ if __name__ == "__main__":
         router.generateRVCModel(artist)
     '''
 
-    #router.basicMatch("hey guys how are we doing today", "Red Hot Chili Peppers")
-    router.ttsSynth("hello")
+    while True:
+        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers")
+    #router.ttsSynth("hello")
 
