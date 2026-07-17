@@ -130,4 +130,4 @@ class RVCTrainer:
 
 if __name__ == "__main__":
     trainer = RVCTrainer()
-    trainer.makeDataset("Weezer")
+    trainer.makeDataset("Red Hot Chili Peppers")

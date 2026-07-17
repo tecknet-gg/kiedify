@@ -1,4 +1,5 @@
 import os
+from gtts import gTTS
 from phoneme import PhonemeSynth, PhonemeExtractor, PhonemeNode
 from stitcher import Stitcher
 from searcher import Searcher
@@ -6,10 +7,9 @@ from downloader import Downloader
 from isolater import Preprocessor
 from directory import DirectoryManager
 from lyrics import LyricFinder
-from tts import TTSGenerator
-from ttsinference import TTS
 from syncer import Syncer
 from dataset import DatasetGenerator
+from rvctrainer import RVCTrainer
 import subprocess
 import re
 
@@ -38,10 +38,9 @@ class Router:
         self.preprocessor = Preprocessor(dir=self.musicDir)
         self.manager = DirectoryManager(dir=self.musicDir)
         self.lyrics = LyricFinder(dir=self.musicDir)
-        self.ttsgenerator = TTSGenerator(dir=self.musicDir)
-        self.tts = TTS(dir=self.musicDir)
         self.syncer = Syncer(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
+        self.rvcTrainer = RVCTrainer(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patchingMode=None):
         if fuzzy:
@@ -57,6 +56,9 @@ class Router:
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
         return file
+
+    def rvcDataset(self, artist, duration=60):
+        self.rvcTrainer.makeDataset(artist=artist, duration=duration)
 
     def phonemeMatch(self, text, artist):
         stitchMap = self.synth.runCorpus(text, artist)
@@ -99,17 +101,18 @@ class Router:
         success = self.phoneme.runMFA(artist)
         return success
 
-    def exportONNX(self, artist):
-        self.ttsgenerator.exportModel(artist)
+    def ttsSynth(self, text, filename="output.mp3"):
+        dir = os.path.join(self.musicDir, "Stitched")
+        outputPath = os.path.join(dir, filename)
 
-    def downloadTTSBases(self):
-        self.ttsgenerator.downloadBases()
-
-    def generateTTSModel(self, artist, gender, resume=True):
-        self.ttsgenerator.generateModel(artist, gender, resume=resume)
-
-    def tts(self, text, artist, fileName=None):
-        self.tts.synthesise(text, artist, fileName=fileName)
+        try:
+            tts = gTTS(text=text, lang="en", slow=False)
+            tts.save(outputPath)
+            print(f"Successfully generated {outputPath}")
+            return outputPath
+        except Exception as e:
+            print(f"Failed to generate {outputPath}, {e}")
+            return None
 
     def secondPass(self, nthreads=3):
         from cleaner import Cleaner
@@ -119,9 +122,6 @@ class Router:
     def syncAll(self):
         self.syncer.syncAll()
 
-    def downloadRVCBases(self):
-        self.rvcgenerator.downloadBases()
-
     def generateDatasets(self, artists):
         for artist in artists:
             self.dataset.generateDataset(artist)
@@ -130,7 +130,7 @@ class Router:
         for artist in artists:
             self.dataset.pruneDataset(artist, target=target)
 
-    def rvc(self, text, artist, fileName="output.txt", ttsMode="local"):
+    def rvcSynth(self, text, artist, fileName="output.txt", ttsMode="local"):
         pass
 
     def apiMatch(self, text, artist, patching=True, mode="fuzzy"):
@@ -146,7 +146,6 @@ if __name__ == "__main__":
     genders = ["male", "male", "male", "female", "female", "female"]
     artistsMeta = tuple(zip(artists, genders))
     router = Router(artists=artistsMeta)
-    router.rvc("Hello!", "Weezer", ttsMode="local")
     #router.rvc("The Pretenders", "The Pretenders")
 
     #router.downloadArtists(artists[5:], qty=5)
@@ -184,6 +183,6 @@ if __name__ == "__main__":
         router.generateRVCModel(artist)
     '''
 
-    router.basicMatch("hey guys how are we doing today", "Red Hot Chili Peppers")
-
+    #router.basicMatch("hey guys how are we doing today", "Red Hot Chili Peppers")
+    router.ttsSynth("hello")
 
