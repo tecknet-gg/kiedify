@@ -43,11 +43,11 @@ class Router:
         self.rvcTrainer = RVCTrainer(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
 
-    def basicMatch(self, text, artist, fuzzy=True, patchingMode=None):
+    def basicMatch(self, text, artist, fuzzy=True, patching=True):
         if fuzzy:
-            stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy")
+            stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy", patching=patching)
         else:
-            stitchMap = self.searcher.basicMatch(text, artist, mode="exact")
+            stitchMap = self.searcher.basicMatch(text, artist, mode="exact", patching=patching)
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
         return file
@@ -178,6 +178,6 @@ if __name__ == "__main__":
     '''
 
     while True:
-        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers")
+        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers", patching=False)
     #router.ttsSynth("hello")
 
