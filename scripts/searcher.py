@@ -9,12 +9,15 @@ import pydub
 from pydub import AudioSegment
 from rapidfuzz.distance.DamerauLevenshtein import similarity
 from tts import TTS
+from rvcinference import RVC
+import asyncio
 
 class Searcher:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music"):
         self.dir = dir
         self.processedDir = os.path.join(self.dir, "Processed")
         self.tts = TTS()
+        self.rvc = RVC()
 
     def normaliseWord(self, word):
         return re.sub(r'[^\w\s]', "", word).lower().strip() #cleans non alphabet stuff
@@ -268,7 +271,7 @@ class Searcher:
 
         return results
 
-    def basicMatch(self, query, artist, mode="fuzzy", patching=True, rtc=True):
+    def basicMatch(self, query, artist, gender="male", mode="fuzzy", patching=True, rtc=True):
         query = query.strip().split()
 
         artistPath = os.path.join(self.processedDir, artist)
@@ -315,6 +318,7 @@ class Searcher:
                 })
 
                 cursor += matchCount
+
             elif patching:
                 print("Couldn't find word")
                 unmatched = query[cursor]
@@ -323,7 +327,9 @@ class Searcher:
                 os.makedirs(fallbackDir, exist_ok=True)
 
                 try:
-                    generatedPath = self.tts.ttsSynth(unmatched,filename)
+                    #generatedPath = self.tts.ttsSynth(unmatched,filename)
+                    print(f"Running RVC inference.")
+                    generatedPath = asyncio.run(self.rvc.synthesise(unmatched, artist, gender, filename, None))
                     if generatedPath and os.path.exists(generatedPath):
                         audio = AudioSegment.from_file(generatedPath)
                         duration = len(audio) / 1000
@@ -342,7 +348,7 @@ class Searcher:
                 except Exception as e:
                     print(f"Error processing {unmatched}: {e}")
                     stitchInstructions.append({
-                        "text": unmatchedWord,
+                        "text": unmatched,
                         "title": None,
                         "audioPath": None,
                         "startTime": None,
@@ -352,14 +358,14 @@ class Searcher:
                     cursor += 1
                     continue
             else:
-                print(f"Error processing {unmatched}: {e}")
+                print(f"Error processing {query[cursor]}, patching set to false")
                 stitchInstructions.append({
-                    "text": unmatchedWord,
+                    "text": query[cursor],
                     "title": None,
                     "audioPath": None,
                     "startTime": None,
                     "endTime": None,
-                "mode": "failed"
+                    "mode": "failed"
                 })
                 cursor += 1
         return stitchInstructions

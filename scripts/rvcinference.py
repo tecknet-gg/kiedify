@@ -15,6 +15,7 @@ class RVC:
         self.applioPython = os.path.join(self.rootDir, "Applio", ".venv", "bin", "python")
 
         self.index = {}
+        self.indexModels()
 
     def indexModels(self):
         if not os.path.exists(self.modelsDir):
@@ -36,7 +37,7 @@ class RVC:
 
             for filename in os.listdir(artistPath):
                 filePath = os.path.join(artistPath, filename)
-                filename.lower()
+                filename = filename.lower()
                 if filename.endswith(".pth"):
                     pthFile = filePath
                 elif filename.endswith(".index"):
@@ -55,7 +56,7 @@ class RVC:
         return True
 
 
-    async def synthesise(self, text, artist, gender, filename="output.mp3", path="Fallback"): #change path to None
+    async def synthesise(self, text, artist, gender, filename="output.mp3", path=None): #change path to None
         modelKey = artist.lower()
         if modelKey not in self.index:
             print(f"No model for {modelKey}")
@@ -81,7 +82,7 @@ class RVC:
         await communicate.save(tempPath)
         print(f"Base audio file saved at {tempPath}")
 
-        if path == "Fallback":
+        if path is None:
             outputPath = os.path.join(self.musicDir, "Stitched", "Fallback")
         else:
             outputPath = os.path.join(self.musicDir, "Stitched")
@@ -100,13 +101,19 @@ class RVC:
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{applioWorkingDir}{os.pathsep}{applioParentDir}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
+        env["OMP_NUM_THREADS"] = "1"
+        env["MKL_NUM_THREADS"] = "1"
+        env["VECLIB_MAXIMUM_THREADS"] = "1"
+        env["NUMEXPR_NUM_THREADS"] = "1"
+
+
         cmd = [
             self.applioPython, self.applioCore, "infer",
             "--input_path", tempPath,
             "--output_path", finalPath,
             "--pth_path", modelPth,
             "--pitch", str(pitch),
-            "--f0_method", "rmvpe"
+            "--f0_method", "rmvpe",
         ]
 
         if modelIndex:
@@ -122,8 +129,16 @@ class RVC:
             )
 
             stdout, stderr = await process.communicate()
+            logs = stdout.decode()
+            errors = stderr.decode()
 
-            if process.returncode == 0:
+            if logs:
+                print(logs)
+
+            if errors:
+                print(errors)
+
+            if process.returncode == 0 and os.path.exists(finalPath):
                 print(f"Successfully generated {finalPath}")
                 return finalPath
             else:

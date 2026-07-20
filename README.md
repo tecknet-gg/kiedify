@@ -33,4 +33,11 @@ Currently working on improving the phoneme level syncing and cleaning up the dat
 router.py has most of the most accessed functions neatly wrapped into one class :]
 
 
+Generation methods:
+
+no patching
+rvc patching
+rvc only
+
+
 

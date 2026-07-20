@@ -48,7 +48,7 @@ class Stitcher:
 
             if audioPath not in audioCache:
                 try:
-                    source = AudioSegment.from_mp3(audioPath).set_frame_rate(44100).set_channels(1) #standardising the sampling rate
+                    source = AudioSegment.from_file(audioPath).set_frame_rate(44100).set_channels(1) #standardising the sampling rate
                     source = high_pass_filter(source, 130)
                     audioCache[audioPath] = source
                 except:

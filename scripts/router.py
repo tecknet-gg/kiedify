@@ -10,9 +10,11 @@ from lyrics import LyricFinder
 from syncer import Syncer
 from dataset import DatasetGenerator
 from rvctrainer import RVCTrainer
+from rvcinference import RVC
 import subprocess
 import re
 from tts import TTS
+import asyncio
 
 class Router:
     def __init__(self, dir="/Users/jeevan/Documents/Python/MusicTTS/Music", globalNodes=None, weights=None, artists=None):
@@ -41,13 +43,15 @@ class Router:
         self.syncer = Syncer(dir=self.musicDir)
         self.dataset = DatasetGenerator(dir=self.musicDir)
         self.rvcTrainer = RVCTrainer(dir=self.musicDir)
+        self.rvc = RVC(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
 
     def basicMatch(self, text, artist, fuzzy=True, patching=True):
+        gender = self.genders[self.artists.index(artist)]
         if fuzzy:
-            stitchMap = self.searcher.basicMatch(text, artist, mode="fuzzy", patching=patching)
+            stitchMap = self.searcher.basicMatch(text, artist, gender, mode="fuzzy", patching=patching)
         else:
-            stitchMap = self.searcher.basicMatch(text, artist, mode="exact", patching=patching)
+            stitchMap = self.searcher.basicMatch(text, artist, gender,  mode="exact", patching=patching)
         file = self.stitcher.generateMP3(stitchMap)
         print(f"Generated {file}")
         return file
@@ -124,8 +128,13 @@ class Router:
         for artist in artists:
             self.dataset.pruneDataset(artist, target=target)
 
-    def rvcSynth(self, text, artist, fileName="output.txt", ttsMode="local"):
-        pass
+    def rvcSynth(self, text, artist, fileName="output.mp3"):
+        artistKey = artist.lower()
+        gender = self.genders[self.artists.index(artist)]
+        path = "stitched"
+        asyncio.run(self.rvc.synthesise(text, artistKey, gender=gender,filename=fileName, path=path))
+
+
 
     def apiWorker(options):
         pass
@@ -178,6 +187,7 @@ if __name__ == "__main__":
     '''
 
     while True:
-        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers", patching=False)
+        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers", patching=True)
+        #router.rvcSynth(text=input("Enter text: "), artist=input("Enter artist: "))
     #router.ttsSynth("hello")
 
