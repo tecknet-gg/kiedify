@@ -4,18 +4,51 @@ import asyncio
 from typing import Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor
 
+import subprocess
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, ConfigDict
+from starlette.middleware.cors import CORSMiddleware
 
 from router import Router
 import uvicorn
 
+
+cloudflaredProcess = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global cloudflaredProcess
+
+    cloudflaredProcess = subprocess.Popen([
+        "cloudflared",
+        "--config",
+        "/Users/jeevan/.cloudflared/config-api.yml", #point to your cloudflared tunnel config
+        "tunnel",
+        "run"
+    ])
+    print("Starting cloudflare tunnel")
+    yield
+
 app = FastAPI(
     title="Kiedify API",
     description = "Music TTS",
-    version = "1.0.0"
+    version = "1.0.1",
+    lifespan=lifespan,
+)
+
+app.add_middleware( #for cloudflared
+    CORSMiddleware,
+    allow_origins=[
+                   "http://localhost:3000",
+                   "http://kiedify.tecknet.dev"
+                   ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 musicDir = os.path.abspath(os.path.join(os.getcwd(),"..", "Music"))
@@ -34,25 +67,21 @@ artistsData = [
 router = Router(dir=musicDir, artists=artistsData)
 router.rvc.indexModels()
 
-taskDb: [str, Dict[str, Dict[str, Any]]] = {}
-taskQueue: List[str] = []
 
-executor = ThreadPoolExecutor(max_workers=2)
+executor = ThreadPoolExecutor(max_workers=2) #two tr
 
 class GenerationRequest(BaseModel):
 
     model_config = ConfigDict(alias_generator=None)
 
-    artist: str = Field(..., title="Red Hot Chili Peppers")
-    text: str = Field(..., title="Double double toil and trouble, fire burn and cauldron bubble")
+    artist: str = Field(..., title="Red Hot Chili Peppers") #required input
+    text: str = Field(..., title="Double double toil and trouble, fire burn and cauldron bubble") #required input
     mode: str = Field("basic", json_schema_extra="basic")
     patching: bool = Field(True, description="Enable RVC fallback for missing words")
 
 
-
-
 class TaskResponse(BaseModel):
-    taskId: str
+    taskId: str #define outputs
     status: str
     message: str
 
