@@ -43,9 +43,11 @@ app = FastAPI(
 app.add_middleware( #for cloudflared
     CORSMiddleware,
     allow_origins=[
-                   "http://localhost:3000",
-                   "http://kiedify.tecknet.dev"
-                   ],
+        "http://localhost:5173",
+        "http://kiedify.tecknet.dev",
+        "https://kiedify.tecknet.dev",
+    ],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
