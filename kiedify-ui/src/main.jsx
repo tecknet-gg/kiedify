@@ -1,13 +1,13 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { ThemeProvider } from "theme-ui"
+import {ThemeUIProvider} from "theme-ui" //changed import non-deprecated class
 import theme from "@hackclub/theme"
 import App from "./App.jsx"
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <ThemeProvider theme={theme}>
+        <ThemeUIProvider theme={theme}> //applies hackclub theme :]
             <App/>
-        </ThemeProvider>
+        </ThemeUIProvider>
     </React.StrictMode>
 )
