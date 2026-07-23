@@ -133,6 +133,8 @@ class Router:
         path = "stitched"
         asyncio.run(self.rvc.synthesise(text, artistKey, gender=gender,filename=fileName, path=path))
 
+        return os.path.join(self.musicDir, path, fileName)
+
     def apiWorker(options):
         pass
 

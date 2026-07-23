@@ -62,12 +62,10 @@ stitchedDir = os.path.join(musicDir, "Stitched")
 os.makedirs(stitchedDir, exist_ok=True)
 
 artistsData = [
-    ("Weezer", "male"),
     ("Red Hot Chili Peppers", "male"),
-    ("The Dismemberment Plan", "male"),
+    ("Weezer", "male"),
     ("The Pretenders", "female"),
     ("Fleetwood Mac", "female"),
-    ("Paramore", "female")
 ]
 
 router = Router(dir=musicDir, artists=artistsData)
@@ -82,8 +80,10 @@ class GenerationRequest(BaseModel):
 
     artist: str = Field(..., title="Red Hot Chili Peppers") #required input
     text: str = Field(..., title="Double double toil and trouble, fire burn and cauldron bubble") #required input
-    mode: str = Field("basic", json_schema_extra="basic")
+    mode: str = Field("basic", description="Generation mode: 'basic', 'semantic' or 'rvc'")
+
     patching: bool = Field(True, description="Enable RVC fallback for missing words")
+    fuzzy: bool = Field(True, description="Enable fuzzy matching instead of exact word matching.")
 
 
 class TaskResponse(BaseModel):
@@ -105,14 +105,17 @@ def processAudioJob(taskId: str, request: GenerationRequest):
         if not matchedArtist:
             raise ValueError(f"Arist '{request.artist}' is not supported")
 
+
         if request.mode == "basic":
-            generatedFile = router.basicMatch(text=request.text, artist=matchedArtist, patching=request.patching)
+            generatedFile = router.basicMatch(text=request.text, artist=matchedArtist, fuzzy=request.fuzzy, patching=request.patching)
 
         elif request.mode == "semantic":
             generatedFile = router.semanticMatch(text=request.text, artist=matchedArtist)
 
         elif request.mode == "rvc":
             generatedFile = router.rvcSynth(text=request.text, artist=matchedArtist, filename=outputFile)
+            if not generatedFile:
+                generatedFile = os.path.join(musicDir, "stitched", outputFile)
 
         else:
             raise ValueError(f"Unknown mode '{request.mode}'")
