@@ -111,7 +111,6 @@ class Router:
         return success
 
 
-
     def secondPass(self, nthreads=3):
         from cleaner import Cleaner
         self.cleaner = Cleaner(dir=self.musicDir)
@@ -133,8 +132,6 @@ class Router:
         gender = self.genders[self.artists.index(artist)]
         path = "stitched"
         asyncio.run(self.rvc.synthesise(text, artistKey, gender=gender,filename=fileName, path=path))
-
-
 
     def apiWorker(options):
         pass

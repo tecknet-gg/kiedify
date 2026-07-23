@@ -40,10 +40,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+taskDb: Dict[str, Dict[str, Any]] = {}
+taskQueue: List[str] = []
+
 app.add_middleware( #for cloudflared
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:3000",
         "http://kiedify.tecknet.dev",
         "https://kiedify.tecknet.dev",
     ],
