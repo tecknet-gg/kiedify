@@ -46,19 +46,19 @@ class Router:
         self.rvc = RVC(dir=self.musicDir)
         self.tts = TTS(dir=self.musicDir)
 
-    def basicMatch(self, text, artist, fuzzy=True, patching=True):
+    def basicMatch(self, text, artist, fuzzy=True, patching=True, filename="output"):
         gender = self.genders[self.artists.index(artist)]
         if fuzzy:
             stitchMap = self.searcher.basicMatch(text, artist, gender, mode="fuzzy", patching=patching)
         else:
             stitchMap = self.searcher.basicMatch(text, artist, gender,  mode="exact", patching=patching)
-        file = self.stitcher.generateMP3(stitchMap)
+        file = self.stitcher.generateMP3(stitchMap, filename=filename)
         print(f"Generated {file}")
         return file
 
-    def semanticMatch(self, text, artist):
+    def semanticMatch(self, text, artist, filename="output"):
         stitchMap = self.searcher.semanticMatch(text, artist)
-        file = self.stitcher.generateMP3(stitchMap)
+        file = self.stitcher.generateMP3(stitchMap, filename=filename)
         print(f"Generated {file}")
         return file
 
@@ -128,7 +128,7 @@ class Router:
             self.dataset.pruneDataset(artist, target=target)
 
     def rvcSynth(self, text, artist, fileName="output.mp3"):
-        artistKey = artist.lower()
+        artistKey = artist.lower().replace("the", "").strip()
         gender = self.genders[self.artists.index(artist)]
         path = "stitched"
         asyncio.run(self.rvc.synthesise(text, artistKey, gender=gender,filename=fileName, path=path))

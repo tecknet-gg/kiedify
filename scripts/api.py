@@ -94,8 +94,7 @@ class TaskResponse(BaseModel):
 def processAudioJob(taskId: str, request: GenerationRequest):
     try:
         taskDb[taskId]["status"] = "processing"
-        outputFile = f"{taskId}.mp3"
-
+        outputFile = f"{str(taskId)[:8]}"
         matchedArtist = None
         for name, gender in artistsData:
             if name.lower() == request.artist.lower():
@@ -103,17 +102,17 @@ def processAudioJob(taskId: str, request: GenerationRequest):
                 break
 
         if not matchedArtist:
-            raise ValueError(f"Arist '{request.artist}' is not supported")
+            raise ValueError(f"t '{request.artist}' is not supported")
 
 
         if request.mode == "basic":
-            generatedFile = router.basicMatch(text=request.text, artist=matchedArtist, fuzzy=request.fuzzy, patching=request.patching)
+            generatedFile = router.basicMatch(text=request.text, artist=matchedArtist, fuzzy=request.fuzzy, patching=request.patching, filename=outputFile)
 
         elif request.mode == "semantic":
-            generatedFile = router.semanticMatch(text=request.text, artist=matchedArtist)
+            generatedFile = router.semanticMatch(text=request.text, artist=matchedArtist, file=outputFile, fuzzy=request.patching)
 
         elif request.mode == "rvc":
-            generatedFile = router.rvcSynth(text=request.text, artist=matchedArtist, filename=outputFile)
+            generatedFile = router.rvcSynth(text=request.text, artist=matchedArtist, fileName=outputFile)
             if not generatedFile:
                 generatedFile = os.path.join(musicDir, "stitched", outputFile)
 
@@ -182,8 +181,6 @@ async def getStatus(taskId: str):
             response["queuePosition"] = 1
 
     return response
-
-
 
 @app.get("/download/{taskId}", tags=["Task Management"])
 async def downloadTask(taskId: str):

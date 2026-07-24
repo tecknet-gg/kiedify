@@ -20,11 +20,11 @@ Progress:
 - [x] PiperTTS Model Training
 - [x] PiperTTS Inference
 - [x] RVC Model Training
-- [ ] RVC Inference
+- [x] RVC Inference
 - [x] Reverse Transcription Checks (Using Cloud Models) (Scrapped)
-- [ ] API Routing (Started)
+- [x] API Routing
 - [x] Pipeline Polishing 
-- [ ] Backend Deployment
+- [x] Backend Deployment
 - [ ] Frontend
 
 Currently working on improving the phoneme level syncing and cleaning up the dataset by running the processed data through a transcription model for quality assurance.
