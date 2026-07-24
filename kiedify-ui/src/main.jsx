@@ -6,7 +6,7 @@ import App from "./App.jsx"
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <ThemeUIProvider theme={theme}> //applies hackclub theme :]
+        <ThemeUIProvider theme={theme}>
             <App/>
         </ThemeUIProvider>
     </React.StrictMode>

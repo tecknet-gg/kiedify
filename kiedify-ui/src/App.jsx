@@ -3,6 +3,7 @@ import {useState, useEffect} from 'react'
 const URL = "https://api.tecknet.dev"
 
 function App() {
+
     const [artists, setArtists] = useState([])
     const [selectedArtist, setSelectedArtist] = useState('')
     const [promptText, setPromptText] = useState('')
@@ -20,7 +21,7 @@ function App() {
             .then((data) => {
                 const list = data.artists || data
                 setArtists(list)
-                if (list.length > 0) setSelectedArtist(list[0].name)
+                if (list.length > 0) setSelectedArtist(list[0].name) //chose first as default
             })
             .catch((err) => {
                 console.error("API Error:", err)
@@ -57,7 +58,7 @@ function App() {
                 setLoading(false)
             }
 
-        }, 2000)
+        }, 1000)
     }
 
 
@@ -84,7 +85,7 @@ function App() {
             if (!res.ok) throw new Error("Failed to queue generation")
 
             const data = await res.json()
-            pollTaskStat(data.taskId)
+            pollTaskStatus(data.taskId)
 
         } catch (err) {
             console.error("Generation Error:", err)
