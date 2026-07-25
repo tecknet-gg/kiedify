@@ -273,6 +273,9 @@ class Searcher:
 
     def basicMatch(self, query, artist, gender="male", mode="fuzzy", patching=True, rtc=True):
         query = query.strip().split()
+        print(f"Query: {query}")
+        if artist.lower() == "the pretenders": #temporary fix :] - probably permanent
+            artist = "Pretenders"
 
         artistPath = os.path.join(self.processedDir, artist)
         manifestPath = os.path.join(artistPath, f"{artist}Synced.json")
