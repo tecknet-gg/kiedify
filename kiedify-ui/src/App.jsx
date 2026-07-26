@@ -1,7 +1,7 @@
 /** @jsxImportSource theme-ui */
 
 import { useState } from 'react'
-import { Box, Container, Card, Input, Button, Flex, IconButton } from 'theme-ui'
+import { Box, Container, Card, Input, Button, Flex, IconButton, Heading, Text } from 'theme-ui'
 import Icon from '@hackclub/icons'
 
 const URL = 'https://api.tecknet.dev'
@@ -22,7 +22,7 @@ export default function App() {
             const data = await res.json()
 
             if (data.status === 'completed') {
-                const audioUrl = await fetch (`${URL}/download/${taskId}`)
+                const audioUrl= `${URL}/download/${taskId}`
 
                 setMessages((prev) =>
                     prev.map((msg) =>
@@ -48,7 +48,7 @@ export default function App() {
                 setIsLoading(false)
             } else {
                 const queueInfo = data.queuePosition ? `(Queue position: ${data.queuePosition})`: ''
-                setMessage((prev) =>
+                setMessages((prev) =>
                     prev.map((msg) =>
                         msg.taskId === taskId
                             ? {...msg, text: `Synthesising audio ${queueInfo}`}
@@ -74,7 +74,7 @@ export default function App() {
         setMessages((prev) => [
             ...prev,
             {id: userMsgId, sender: 'user', text: userText},
-            {id: systemtaskId, taskid: systemTaskId, esnder: 'system', text: 'Queuing'},
+            {id: systemTaskId, taskid: systemTaskId, esnder: 'system', text: 'Queuing'},
 
         ])
 
@@ -128,6 +128,7 @@ export default function App() {
             }}
         >
             <Container sx={{maxWidth: '640px', width: '100%'}} >
+
                 <Flex sx={{ alignItems: 'center', mb: 3, gap:2}}>
                     <Icon glyph="music" size={36} sx={{color: 'red'}}/>
                     <Heading
@@ -142,6 +143,104 @@ export default function App() {
                         Kiedify
                     </Heading>
                 </Flex>
+
+                <Card
+                    sx={{
+                        bg: '#0f172a',
+                        borderRadius: 'extra',
+                        p: 4,
+                        minHeight: '420px',
+                        maxHeight: '520px',
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 3,
+                        border: '1px solid',
+                        borderColor: '#1e293b'
+                    }}
+                >
+                    {messages.map((msg) => (
+                        <Flex
+                            key={msg.id}
+                            sx={{
+                                flexDirection:'column',
+                                alignItems: msg.sender === 'user' ? 'flex-end': 'flex-start'
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    bg: msg.sender === 'user' ? 'red': '#1e293b',
+                                    color: 'white',
+                                    px: 3,
+                                    py: 2,
+                                    borderRadius: 'large',
+                                    maxWidth: '85%',
+                                    fontSize: 2,
+                                    fontWeight: 'medium',
+                                    border: msg.sender === 'user' ? 'none': '1px solid #334155'
+                                }}
+                            >
+                                <Text>{msg.text}</Text>
+                                {msg.audioUrl && (
+                                    <Box sx={{mt:2}} >
+                                        <audio
+                                            controls
+                                            src={msg.audioUrl}
+                                            style={{width: '100%', borderRadius: '8px', outline: 'none'}}
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Flex>
+                    ))}
+                </Card>
+
+                <Box
+                    as='form'
+                    onSubmit={handleSend}
+                    sx={{
+                        mt: 3,
+                        bg: '#0f172a',
+                        borderRadius: 'circle',
+                        p: 2,
+                        px: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        border: '1px solid',
+                        borderColor: '#1e293b',
+                        '&:focus-within': {boderColor: 'red'}
+                    }}
+                >
+                    <Input
+                        value={promptText}
+                        onChange={(e) => setPromptText(e.target.value)}
+                        placeholder={isLoading ? "Generating track..": "Type lyrics to synthesise..."}
+                        disabled={isLoading}
+                        sx={{
+                             border: 'none',
+                            outline: 'none',
+                            color: 'white',
+                            fontSize: 2,
+                            px: 2,
+                            '&focus': {outline: 'none', boxShadow: 'none'}
+                        }}
+                    />
+                    <IconButton
+                        type='submit'
+                        disabled={isLoading}
+                        sx={{
+                            bg: isLoading ? '#1e293b': 'red',
+                            color: 'white',
+                            borderRadius: 'circle',
+                            cursor: isLoading? 'not-allowed': 'pointer',
+                            p: 2,
+                            '&:hover': {bg: isLoading ? '#1e293b': 'red'}
+                        }}
+                    >
+                        <Icon glyph="send" size={24}/>
+                    </IconButton>
+                </Box>
+
             </Container>
         </Box>
     )
