@@ -1,20 +1,43 @@
 /** @jsxImportSource theme-ui */
 
-import { useState } from 'react'
-import { Box, Container, Card, Input, Button, Flex, IconButton, Heading, Text } from 'theme-ui'
+import { useState, useEffect } from 'react'
+import { Box, Container, Card, Input, Button, Flex, IconButton, Heading, Text, Select } from 'theme-ui'
 import Icon from '@hackclub/icons'
 
 const URL = 'https://api.tecknet.dev'
+const DEFAULT_ARTIST = [
+    {name: 'Red Hot chili Peppers', gender: 'male'}
+]
+
 
 export default function App() {
     const [promptText, setPromptText] = useState('')
     const [selectedArtist, setSelectedArtist] = useState('Red Hot Chili Peppers')
-    const [selectedMode, setSlectedMode] = useState('basic')
+    const [selectedMode, setSelectedMode] = useState('basic')
     const [isLoading, setIsLoading] = useState(false)
+    const [artists, setArtists] = useState(DEFAULT_ARTIST)
 
     const [messages, setMessages] = useState([
-
+        {id: 'welcome', sender: 'system', text: 'Welcome to Kiedify, pick an artist mess around with the settings and input some text!'}
     ])
+
+    useEffect(() => {
+        async function fetchArtists() {
+            try {
+                const res = await fetch(`${URL}/artists`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.artists && data.artists.length>0) {
+                        setArtists(data.artists)
+                        setSelectedArtist(data.artists[0].name)
+                    }
+                }
+            } catch (err) {
+                console.warn("Couldn't fetch artists from API")
+            }
+        }
+        fetchArtists()
+    }, [])
 
     const pollTaskStatus = async (taskId, userPrompt) => {
         try {
@@ -74,7 +97,7 @@ export default function App() {
         setMessages((prev) => [
             ...prev,
             {id: userMsgId, sender: 'user', text: userText},
-            {id: systemTaskId, taskid: systemTaskId, esnder: 'system', text: 'Queuing'},
+            {id: systemTaskId, taskId: systemTaskId, sender: 'system', text: 'Queuing'},
 
         ])
 
@@ -109,7 +132,7 @@ export default function App() {
         } catch (error) {
             setMessages((prev) => [
                 ...prev,
-                {id: Date.now(), sender: 'system', text: 'Failed to connect to API - ${error.message}'}
+                {id: Date.now(), sender: 'system', text: `Failed to connect to API - ${error.message}`}
             ])
             setIsLoading(false)
         }
@@ -208,7 +231,7 @@ export default function App() {
                         alignItems: 'center',
                         border: '1px solid',
                         borderColor: '#1e293b',
-                        '&:focus-within': {boderColor: 'red'}
+                        '&:focus-within': {borderColor: 'red'}
                     }}
                 >
                     <Input
@@ -222,7 +245,7 @@ export default function App() {
                             color: 'white',
                             fontSize: 2,
                             px: 2,
-                            '&focus': {outline: 'none', boxShadow: 'none'}
+                            '&:focus': {outline: 'none', boxShadow: 'none'}
                         }}
                     />
                     <IconButton
@@ -240,6 +263,32 @@ export default function App() {
                         <Icon glyph="send" size={24}/>
                     </IconButton>
                 </Box>
+
+                <Flex sx={{ mt: 3, gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center'}}>
+                    <Select
+                        value={selectedArtist}
+                        onChange={(e) => setSelectedArtist(e.target.value)}
+                        sx={{
+                            bg: '#0f172a',
+                            color: 'red',
+                            border: '1px solid',
+                            borderColor: 'red',
+                            borderRadius: 'pill',
+                            px: 3,
+                            py: 1,
+                            fontSize: 1,
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            width: 'auto'
+                        }}
+                    >
+                        {artists.map((artist) => (
+                            <option key={artist.name} value = {artist.name}>
+                                {artist.name} ({artist.gender})
+                            </option>
+                        ))}
+                    </Select>
+                </Flex>
 
             </Container>
         </Box>
