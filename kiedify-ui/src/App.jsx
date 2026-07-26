@@ -31,7 +31,7 @@ export default function App() {
                                 ...msg,
                                 status: 'completed',
                                 text: `Generated track for ${userPrompt}`,
-                                audioUrl = audioUrl
+                                audioUrl: audioUrl
                             }
                             : msg
                     )
@@ -64,6 +64,55 @@ export default function App() {
     }
 
     const handleSend = async (e) => {
+        e?.preventDefault()
+        if (!promptText.trim() || isLoading) return
+
+        const userText = promptText
+        const userMsgId = Date.now()
+        const systemTaskId = `task-${Date.now()}`
+
+        setMessages((prev) => [
+            ...prev,
+            {id: userMsgId, sender: 'user', text: userText},
+            {id: systemtaskId, taskid: systemTaskId, esnder: 'system', text: 'Queuing'},
+
+        ])
+
+        setPromptText('')
+        setIsLoading(true)
+
+        try {
+            const res = await fetch(`${URL}/generate`,{
+                method: 'POST',
+                headers: {'Content-type': 'application/json'},
+                body: JSON.stringify({
+                    artist: selectedArtist,
+                    text: userText,
+                    mode: selectedMode,
+                    patching: true,
+                    fuzzy: true
+                })
+            })
+
+            if (!res.ok) {
+                throw new Error(`HTTP Error ${res.status}`)
+            }
+
+            const data = await res.json()
+
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === systemTaskId ? {...msg, taskId: data.taskId} : msg
+                )
+            )
+            pollTaskStatus(data.taskId, userText)
+        } catch (error) {
+            setMessages((prev) => [
+                ...prev,
+                {id: Date.now(), sender: 'system', text: 'Failed to connect to API - ${error.message}'}
+            ])
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -78,7 +127,22 @@ export default function App() {
                 p: [3,4]
             }}
         >
-
+            <Container sx={{maxWidth: '640px', width: '100%'}} >
+                <Flex sx={{ alignItems: 'center', mb: 3, gap:2}}>
+                    <Icon glyph="music" size={36} sx={{color: 'red'}}/>
+                    <Heading
+                        as='h1'
+                        sx={{
+                            color: 'white',
+                            fontSize: [4,5],
+                            fontFamily: 'heading',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        Kiedify
+                    </Heading>
+                </Flex>
+            </Container>
         </Box>
     )
 }
