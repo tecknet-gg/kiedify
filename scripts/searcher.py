@@ -64,7 +64,7 @@ class Searcher:
             matchData = None
             highestSimilarity = 0.0
 
-            maxWindow = len(remaining)
+            maxWindow = min(len(remaining), 6)
             phraseFound = False
 
             for currentLength in range(maxWindow, minmumLength-1, -1):
@@ -121,11 +121,11 @@ class Searcher:
                 cursor += matchCount
             else:
                 stitchInstructions.append({
-                    "text": " ". join(remaining[:matchCount]),
-                    "title": matchData.get("title"),
-                    "audioPath": matchData.get("audioPath"),
-                    "startTime": matchData.get("startTime"),
-                    "endTime": matchData.get("endTime"),
+                    "text": currentWord,
+                    "title": None,
+                    "audioPath": None,
+                    "startTime": None,
+                    "endTime": None,
                     "status": "unmatched",
                     "mode": None
                 })
@@ -303,7 +303,7 @@ class Searcher:
 
 
             if mode == "exact":
-                matchCount, matchData = self.findLCS(remaining, tracks, threshold)
+                matchCount, matchData = self.findLCS(remaining, tracks)
             elif mode == "fuzzy":
                 for threshold in [90, 75]:
                     matchCount, matchData = self.findFuzzyLCS(remaining, tracks, threshold)

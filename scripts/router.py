@@ -185,8 +185,10 @@ if __name__ == "__main__":
         router.generateRVCModel(artist)
     '''
 
-    while True:
-        router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers", patching=True)
+    #while True:
+        #router.basicMatch(str(input("Enter some text: ")), "Red Hot Chili Peppers", patching=True)
         #router.rvcSynth(text=input("Enter text: "), artist=input("Enter artist: "))
     #router.ttsSynth("hello")
+
+    router.semanticMatch(text='the quick brown fox', artist=artists[1])
 

@@ -109,7 +109,7 @@ def processAudioJob(taskId: str, request: GenerationRequest):
             generatedFile = router.basicMatch(text=request.text, artist=matchedArtist, fuzzy=request.fuzzy, patching=request.patching, filename=outputFile)
 
         elif request.mode == "semantic":
-            generatedFile = router.semanticMatch(text=request.text, artist=matchedArtist, file=outputFile, fuzzy=request.patching)
+            generatedFile = router.semanticMatch(text=request.text, artist=matchedArtist, filename=outputFile)
 
         elif request.mode == "rvc":
             generatedFile = router.rvcSynth(text=request.text, artist=matchedArtist, fileName=outputFile)
