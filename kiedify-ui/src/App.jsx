@@ -10,6 +10,8 @@ const DEFAULT_ARTIST = [
 ]
 
 
+
+
 export default function App() {
     const [promptText, setPromptText] = useState('')
     const [selectedArtist, setSelectedArtist] = useState('Red Hot Chili Peppers')
@@ -18,6 +20,13 @@ export default function App() {
     const [artists, setArtists] = useState(DEFAULT_ARTIST)
     const [fuzzy, setFuzzy] = useState(true)
     const [patching, setPatching] = useState(true)
+
+    const modeOptions = [
+        {label: 'Basic', value: 'basic'},
+        {label: 'Semantic', value: 'semantic'},
+        {label: 'RVC', value: 'rvc'},
+
+    ]
 
     const [messages, setMessages] = useState([
         {id: 'welcome', sender: 'system', text: 'Welcome to Kiedify, pick an artist mess around with the settings and input some text!'}
@@ -159,7 +168,7 @@ export default function App() {
                     <Heading
                         as='h1'
                         sx={{
-                            color: 'white',
+                            color: 'red',
                             fontSize: [4,5],
                             fontFamily: 'heading',
                             fontWeight: 'bold'
@@ -172,7 +181,7 @@ export default function App() {
                 <Card
                     sx={{
                         bg: '#0f172a',
-                        borderRadius: 'extra',
+                        borderRadius: '20px',
                         p: 4,
                         minHeight: '420px',
                         maxHeight: '520px',
@@ -198,7 +207,7 @@ export default function App() {
                                     color: 'white',
                                     px: 3,
                                     py: 2,
-                                    borderRadius: 'large',
+                                    borderRadius: '20px',
                                     maxWidth: '85%',
                                     fontSize: 2,
                                     fontWeight: 'medium',
@@ -211,7 +220,7 @@ export default function App() {
                                         <audio
                                             controls
                                             src={msg.audioUrl}
-                                            style={{width: '100%', borderRadius: '8px', outline: 'none'}}
+                                            style={{width: '100%', borderRadius: '20px', outline: 'none'}}
                                         />
                                     </Box>
                                 )}
@@ -226,24 +235,26 @@ export default function App() {
                     sx={{
                         mt: 3,
                         bg: '#0f172a',
-                        borderRadius: 'circle',
+                        borderRadius: '20px',
                         p: 2,
                         px: 3,
                         display: 'flex',
                         alignItems: 'center',
                         border: '1px solid',
                         borderColor: '#1e293b',
+                        transition: '0.2s border-color',
                         '&:focus-within': {borderColor: 'red'}
                     }}
                 >
                     <Input
                         value={promptText}
                         onChange={(e) => setPromptText(e.target.value)}
-                        placeholder={isLoading ? "Generating track..": "Type lyrics to synthesise..."}
+                        placeholder={isLoading ? "Generating track..": "Type text to synthesise..."}
                         disabled={isLoading}
                         sx={{
                              border: 'none',
                             outline: 'none',
+                            bg: 'transparent',
                             color: 'white',
                             fontSize: 2,
                             px: 2,
@@ -266,7 +277,7 @@ export default function App() {
                     </IconButton>
                 </Box>
 
-                <Flex sx={{ mt: 3, gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center'}}>
+                <Flex sx={{ mt: 3, gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center'}}>
                     <Select
                         value={selectedArtist}
                         onChange={(e) => setSelectedArtist(e.target.value)}
@@ -276,27 +287,26 @@ export default function App() {
                             border: '1px solid',
                             borderColor: 'red',
                             borderRadius: 'pill',
-                            px: 3,
                             py: 1,
                             fontSize: 1,
                             fontWeight: 'bold',
                             cursor: 'pointer',
-                            width: 'auto'
+                            width: 'auto',
                         }}
                     >
                         {artists.map((artist) => (
                             <option key={artist.name} value = {artist.name}>
-                                {artist.name} ({artist.gender})
+                                {artist.name}
                             </option>
                         ))}
                     </Select>
-                    {['basic', 'semantic', 'rvc'].map((mode) => (
+                    {modeOptions.map((mode) => (
                         <Button
-                        key={mode}
+                        key={mode.value}
                         type="button"
-                        onClick={() => setSelectedMode(mode)}
+                        onClick={() => setSelectedMode(mode.value)}
                         sx={{
-                            bg: selectedMode === mode ? 'red' : '#1e293b',
+                            bg: selectedMode === mode.value ? 'red' : '#1e293b',
                             color: 'white',
                             borderRadius: 'pill',
                             px: 3,
@@ -306,15 +316,15 @@ export default function App() {
                             textTransform: 'capitalize',
                             cursor: 'pointer',
                             transition: '0.2s',
-                            '&:hover': {bg: selectedMode === mode ? 'red' : '#334155'}
+                            '&:hover': {bg: selectedMode === mode.value ? 'red' : '#334155'}
                         }}
                         >
-                            {mode}
+                            {mode.label}
                         </Button>
                     ))}
 
-                    <Flex sx = {{gap: 3, ml: [0,2], alignItems: 'center'}}>
-                        <Label sx = {{color: 'white', fontSize: 1, alignItems: 'center', cursor: 'pointer', width: 'auto'}}>
+                    <Flex sx = {{gap: 3, ml: [0,2], alignItems: 'center', height: '100%'}}>
+                        <Label sx = {{display: 'flex', color: 'white', fontSize: 1, alignItems: 'center', cursor: 'pointer', width: 'auto', gap: 2, m: 0, lineHeight: 1}}>
                                <Checkbox
                                    checked={fuzzy}
                                    onChange={(e) => setFuzzy(e.target.checked)}
@@ -324,8 +334,7 @@ export default function App() {
                             Fuzzy
                         </Label>
 
-                        <Label sx = {{color: 'white', fontSize: 1, alignItems: 'center', cursor: 'pointer', width: 'auto'}}
-                            >
+                        <Label sx = {{display: 'flex', color: 'white', fontSize: 1, alignItems: 'center', cursor: 'pointer', width: 'auto', gap: 2, m: 0, lineHeight: 1}}>
                             <Checkbox
                                 checked={patching}
                                 onChange={(e) => setPatching(e.target.checked)}
