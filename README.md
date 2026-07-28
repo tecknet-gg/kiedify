@@ -47,6 +47,7 @@ If you'd like to deploy this locally and produce datasets for your own artist he
 
 - ![Python](https://www.python.org/) 3.10.x
 - ![Node.js](https://nodejs.org/en) v18+
+- ffmpeg (https://www.ffmpeg.org/)
 
 ### Instructions:
 
@@ -55,6 +56,9 @@ If you'd like to deploy this locally and produce datasets for your own artist he
 
 git clone https://github.com/tecknet-gg/kiedify 
 cd kiedify
+
+python -m venv .venv
+source .venv/bin/activate
 
 pip install -r requirements.txt
 
@@ -71,7 +75,7 @@ git clone https://github.com/iahispano/Applio
 All the main pipeline features are wrapped into ```router.py```. The names are pretty self explanatory as to what they do. Here's how you would 
 
 ```
-from router.py import Router
+from router import Router
 
 artists = ["artist1", "artist2"]
 genders = ["male", "female"]
@@ -96,7 +100,7 @@ And with that pipeline you should have your basic dataset generated! You can run
 To generate the RVC models needed:
 
 ```
-from rvctrainer.py import RVCTrainer
+from rvctrainer import RVCTrainer
 from router.py import Router
 
 
@@ -114,6 +118,7 @@ trainer.makeDataset(artist)
 
 ```
 cd Applio
+./run-install.sh # One time to install dependencies
 ./run-applio.sh
 ```
 
@@ -130,6 +135,8 @@ python scripts/api.py #run while the .venv is activated
 cd kiedify-ui
 npm run dev
 ```
+
+And with that you should be up and running!
 
 
 
