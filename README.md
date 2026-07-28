@@ -21,9 +21,9 @@ I do not know actually. I vaguely remembering watching a video of someone using 
 <img width="1255" height="697" alt="image" src="https://github.com/user-attachments/assets/1d05d7bc-52eb-48db-96e1-16f91b6df72a" />
 
 ## Audio:
-- ![Sometimes I feel... - Weezer](https://user-cdn.hackclub-assets.com/019fa8e9-1c7c-741b-9566-8f139ea1e3a5/sometimes%20i%20feel%20like.mp3)
-- ![What is the meaning of life - Red Hot Chili Peppers](https://user-cdn.hackclub-assets.com/019fa8ea-07a4-7e77-897e-1e9933fc1729/meaning%20of%20life.mp3)
-- ![Hey guys... - Red Hot Chili Peppers](https://user-cdn.hackclub-assets.com/019fa8ea-9556-774e-83c2-f370104ec13d/hey%20guys2.mp3)
+- [Sometimes I feel... - Weezer](https://user-cdn.hackclub-assets.com/019fa8e9-1c7c-741b-9566-8f139ea1e3a5/sometimes%20i%20feel%20like.mp3)
+- [What is the meaning of life - Red Hot Chili Peppers](https://user-cdn.hackclub-assets.com/019fa8ea-07a4-7e77-897e-1e9933fc1729/meaning%20of%20life.mp3)
+- [Hey guys... - Red Hot Chili Peppers](https://user-cdn.hackclub-assets.com/019fa8ea-9556-774e-83c2-f370104ec13d/hey%20guys2.mp3)
 
 
 # How to use
