@@ -1,14 +1,14 @@
 # Kiedify
 
-A silly little ![site](https://kiedify.tecknet.dev) to find strings of text within an artist's discography! Back-end written in Python, with a React frontend. Search using simple longest common substring, semantic searching, or running an RVC model.
+A silly little [site](https://kiedify.tecknet.dev) to find strings of text within an artist's discography! Back-end written in Python, with a React frontend. Search using simple longest common substring, semantic searching, or running an RVC model.
 
 # How it works
 
-The back-end is the bread and butter of this project. The pipeline indexes any artists' discography using Deezer's ![API](https://developers.deezer.com/login?redirect=/api) and uses ![yt-dlp](https://github.com/yt-dlp/yt-dlp)'s built in search feature to source and download the track from YouTube. The vocals are then isolated using ![demucs](https://github.com/facebookresearch/demucs). A manifest of all tracks that pass this initial pipeline is produced and their lyrics, synced to the line, are pulled from ![LRCLIB](https://lrclib.net/). 
+The back-end is the bread and butter of this project. The pipeline indexes any artists' discography using Deezer's [API](https://developers.deezer.com/login?redirect=/api) and uses [yt-dlp](https://github.com/yt-dlp/yt-dlp)'s built in search feature to source and download the track from YouTube. The vocals are then isolated using [demucs](https://github.com/facebookresearch/demucs). A manifest of all tracks that pass this initial pipeline is produced and their lyrics, synced to the line, are pulled from [LRCLIB](https://lrclib.net/). 
 
-![WhisperX](https://github.com/m-bain/whisperx) is then used to do the actual syncing, force aligning each word to the audio snippet, and a word level manifest is produced for each artist, providing the start and end timestamps of each word. A second pass is done blind to the results of the first. It transcribes the audio, to get the actual test, and that is used as the ground-truth, providing more accurate timestamps and reducing drift. 
+[WhisperX](https://github.com/m-bain/whisperx) is then used to do the actual syncing, force aligning each word to the audio snippet, and a word level manifest is produced for each artist, providing the start and end timestamps of each word. A second pass is done blind to the results of the first. It transcribes the audio, to get the actual test, and that is used as the ground-truth, providing more accurate timestamps and reducing drift. 
 
-Obviously an artist won't have said every word in the English dictionary, so a fallback was needed. My first approach was using Phoneme Extraction using ![MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner), and then using Graph Traversal to produce audio for new words, using Viterbi's Algorithm. Ended up not being viable. The second approach was using a TTS model I trained using ![PiperTTS](https://github.com/rhasspy/piper). The resultant model ended up being pretty bad, so I pivoted to RVC, which promises to preserve the artists timbre more accurately. Initially used a pure programmatic approach using a ![library](https://pypi.org/project/rvc-python/). Ended up not working at all, so I switched to a web-ui called ![Applio](https://applio.org/). Worked nearly immediately, and after 50 epochs of training on a ~1hr dataset, I got pretty decent results. Inference is cheap, and that is the final fallback approach implemented.
+Obviously an artist won't have said every word in the English dictionary, so a fallback was needed. My first approach was using Phoneme Extraction using [MFA](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner), and then using Graph Traversal to produce audio for new words, using Viterbi's Algorithm. Ended up not being viable. The second approach was using a TTS model I trained using ![PiperTTS](https://github.com/rhasspy/piper). The resultant model ended up being pretty bad, so I pivoted to RVC, which promises to preserve the artists timbre more accurately. Initially used a pure programmatic approach using a [library](https://pypi.org/project/rvc-python/). Ended up not working at all, so I switched to a web-ui called [Applio](https://applio.org/). Worked nearly immediately, and after 50 epochs of training on a ~1hr dataset, I got pretty decent results. Inference is cheap, and that is the final fallback approach implemented.
 
 # Why I made this project
 
@@ -28,9 +28,9 @@ I do not know actually. I vaguely remembering watching a video of someone using 
 
 # How to use
 
-If you only care about using it, and don't mind the current artist selection (Red Hot Chili Peppers, Weezer, The Pretenders, Fleetwood Mac), visit: ![kiedify.tecknet.dev](https://kiedify.tecknet.dev). 
+If you only care about using it, and don't mind the current artist selection (Red Hot Chili Peppers, Weezer, The Pretenders, Fleetwood Mac), visit: [kiedify.tecknet.dev](https://kiedify.tecknet.dev). 
 
-The API is public at ![api.tecknet.dev](https://api.tecknet.dev), and the auto-generated swagger ![documentation](https://api.tecknet.dev/docs) for the same. A short summary:
+The API is public at [api.tecknet.dev](https://api.tecknet.dev), and the auto-generated swagger [documentation](https://api.tecknet.dev/docs) for the same. A short summary:
 
 | Method                 | Notes                                                          |
 | ---------------------- | -------------------------------------------------------------- |
@@ -45,9 +45,9 @@ If you'd like to deploy this locally and produce datasets for your own artist he
 
 ### Prerequisites:
 
-- ![Python](https://www.python.org/) 3.10.x
-- ![Node.js](https://nodejs.org/en) v18+
-- ffmpeg (https://www.ffmpeg.org/)
+- [Python](https://www.python.org/) 3.10.x
+- [Node.js](https://nodejs.org/en) v18+
+- [ffmpeg](https://www.ffmpeg.org/)
 
 ### Instructions:
 
