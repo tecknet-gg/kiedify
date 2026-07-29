@@ -72,7 +72,7 @@ In your project you also want to clone Applio if you're planning on training an 
 git clone https://github.com/iahispano/Applio
 ```
 
-All the main pipeline features are wrapped into ```router.py```. The names are pretty self explanatory as to what they do. Here's how you would 
+All the main pipeline features are wrapped into ```router.py```. The names are pretty self explanatory as to what they do. Here's how you would generate a basic dataset
 
 ```
 from router import Router
@@ -103,11 +103,6 @@ To generate the RVC models needed:
 from rvctrainer import RVCTrainer
 from router.py import Router
 
-
-artists = ["artist1", "artist2"]
-genders = ["male", "female"]
-artistsMeta = tuple(zip(artists, genders))
-
 router = Router(artists=artistsMeta)
 trainer = RVCTrainer()
 
@@ -128,7 +123,7 @@ After training, export the model_info.json, the *.pth file (rename to just the A
 And with that, you should have a fully capable local setup! If you want to host your own API, change the tunnel config in ```api.py```, I'm using cloudflare tunnels since my ISP uses CGNAT. To run the API and the frontend:
 
 ```
-python scripts/api.py #run while the .venv is activated
+python scripts/api.py # Run with .venv active
 ```
 
 ```
