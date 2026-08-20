@@ -30,6 +30,10 @@ I do not know actually. I vaguely remembering watching a video of someone using 
 
 If you only care about using it, and don't mind the current artist selection (Red Hot Chili Peppers, Weezer, The Pretenders, Fleetwood Mac), visit: [kiedify.tecknet.dev](https://kiedify.tecknet.dev). 
 
+>[!WARNING]
+> The semantic search method does work, but the compute required for longer inputs is very high. To test out the semantic search, use phrases that are shorter than 8 words.
+
+
 The API is public at [api.tecknet.dev](https://api.tecknet.dev), and the auto-generated swagger [documentation](https://api.tecknet.dev/docs) for the same. A short summary:
 
 | Method                 | Notes                                                          |
