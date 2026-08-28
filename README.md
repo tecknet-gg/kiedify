@@ -3,7 +3,7 @@
 A silly little [site](https://kiedify.tecknet.dev) to find strings of text within an artist's discography! Back-end written in Python, with a React frontend. Search using simple longest common substring, semantic searching, or running an RVC model.
 
 >[!NOTE]
-> If the website is down, please check again in a few hours, due to the cost of compute for RVC and Semantic searches, I have to self host this. I try to maintain good uptime, but occasionally, my device might be on a network that doesn't permit cloudflare tunnels.  
+> If the website is down, please check again in a few hours, due to the cost of compute for RVC and Semantic searches, I have to self host this. I try to maintain good uptime, but occasionally, my device might be on a network that doesn't permit cloudflare tunnels. I am working on migrating it to a VPS and have already containerised it. 
 
 # How it works
 
