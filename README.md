@@ -3,7 +3,7 @@
 A silly little [site](https://kiedify.tecknet.dev) to find strings of text within an artist's discography! Back-end written in Python, with a React frontend. Search using simple longest common substring, semantic searching, or running an RVC model.
 
 >[!NOTE]
-> The service has been fully migrated to a VPS. Performance is slightly slower, but you can expect full uptime :]. Enjoy!
+> Live demo is down indefinitely - probably until I get myself a homelab setup at the least! It requires a decent amount of compute and I don't want to pay for a VPS!
 # How it works
 
 The back-end is the bread and butter of this project. The pipeline indexes any artists' discography using Deezer's [API](https://developers.deezer.com/login?redirect=/api) and uses [yt-dlp](https://github.com/yt-dlp/yt-dlp)'s built in search feature to source and download the track from YouTube. The vocals are then isolated using [demucs](https://github.com/facebookresearch/demucs). A manifest of all tracks that pass this initial pipeline is produced and their lyrics, synced to the line, are pulled from [LRCLIB](https://lrclib.net/). 
